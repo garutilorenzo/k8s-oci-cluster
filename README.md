@@ -297,8 +297,8 @@ Once you have created the terraform.tfvars file edit the main.tf file (always in
 | `k8s_server_pool_size`  | `no`  | Number of k8s servers deployed. Default 2  |
 | `k8s_worker_pool_size`  | `no`  | Number of k8s workers deployed. Default 2  |
 | `oci_bucket_name`  | `no`  | Bucket name used for sharing the kubernetes token used for joining the cluster. Default: my-very-secure-k8s-bucket  |
-| `install_nginx_ingress`  | `no`  | Boolean value, install kubernetes nginx ingress controller instead of Traefik. Default: true. For more information see [Nginx ingress controller](#nginx-ingress-controller) |
-| `install_longhorn`  | `no`  | Boolean value, install longhorn "Cloud native distributed block storage for Kubernetes". Default: true  |
+| `install_nginx_ingress`  | `no`  | Boolean value, install kubernetes nginx ingress controller. Default: false. |
+| `install_longhorn`  | `no`  | Boolean value, install longhorn "Cloud native distributed block storage for Kubernetes". Default: false  |
 | `longhorn_release`  | `no`  | Longhorn release. Default: v1.2.3  |
 | `unique_tag_key`  | `no`  | Unique tag name used for tagging all the deployed resources. Default: k8s-provisioner |
 | `unique_tag_value`  | `no`  | Unique value used with  unique_tag_key. Default: https://github.com/garutilorenzo/k8s-oci-cluster |

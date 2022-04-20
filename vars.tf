@@ -185,12 +185,12 @@ variable "my_public_ip_cidr" {
 
 variable "install_nginx_ingress" {
   type    = bool
-  default = true
+  default = false
 }
 
 variable "install_longhorn" {
   type    = bool
-  default = true
+  default = false
 }
 
 variable "longhorn_release" {
