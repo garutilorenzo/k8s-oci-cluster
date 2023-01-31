@@ -1,7 +1,10 @@
 resource "oci_core_instance_pool" "k8s_servers" {
   depends_on = [
     oci_identity_dynamic_group.compute_dynamic_group,
-    oci_identity_policy.compute_dynamic_group_policy
+    oci_identity_policy.compute_dynamic_group_policy,
+    oci_vault_secret.cert_secret,
+    oci_vault_secret.token_secret,
+    oci_vault_secret.hash_secret,
   ]
 
   lifecycle {

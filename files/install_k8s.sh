@@ -52,16 +52,6 @@ cgroupDriver: systemd
 EOF
 }
 
-wait_for_s3_object(){
-  ca_count=$(oci os object list -bn my-very-secure-k8s-bucket --prefix ca | jq -r '.data | length')
-  until [ $ca_count -ne 0 ]
-  do
-      echo "Waiting the ca hash ..."
-      sleep 10
-      ca_count=$(oci os object list -bn my-very-secure-k8s-bucket --prefix ca | jq -r '.data | length')
-  done
-}
-
 wait_for_pods(){
   until kubectl get pods -A | grep 'Running'; do
     echo 'Waiting for k8s startup'
@@ -273,7 +263,6 @@ if [[ "$first_instance" == "$instance_id" ]] && [[ "$control_plane_status" -ne 4
   # Make Master nodes schedulable since we have only 4 nodes
   kubectl taint nodes --all node-role.kubernetes.io/master-
 else
-  wait_for_s3_object
   render_kubejoin
   k8s_join
 fi

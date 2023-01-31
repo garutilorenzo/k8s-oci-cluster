@@ -2,6 +2,9 @@ resource "oci_core_instance_pool" "k8s_workers" {
 
   depends_on = [
     oci_load_balancer_load_balancer.k8s_load_balancer,
+    oci_vault_secret.cert_secret,
+    oci_vault_secret.token_secret,
+    oci_vault_secret.hash_secret,
   ]
 
   lifecycle {
