@@ -22,34 +22,34 @@ sudo sysctl --system
 }
 
 preflight(){
-    apt-get update && apt-get upgrade -y
+  apt-get update && apt-get upgrade -y
 
-    apt-get install -y \
-        ca-certificates \
-        unzip \
-        software-properties-common \
-        curl \
-        gnupg \
-        openssl \
-        lsb-release \
-        apt-transport-https \
-        jq
-    
-    render_config
-    
-    # Disable firewall 
-    /usr/sbin/netfilter-persistent stop
-    /usr/sbin/netfilter-persistent flush
+  apt-get install -y \
+      ca-certificates \
+      unzip \
+      software-properties-common \
+      curl \
+      gnupg \
+      openssl \
+      lsb-release \
+      apt-transport-https \
+      jq
+  
+  render_config
+  
+  # Disable firewall 
+  /usr/sbin/netfilter-persistent stop
+  /usr/sbin/netfilter-persistent flush
 
-    systemctl stop netfilter-persistent.service
-    systemctl disable netfilter-persistent.service
-    # END Disable firewall
+  systemctl stop netfilter-persistent.service
+  systemctl disable netfilter-persistent.service
+  # END Disable firewall
 }
 
 preflight_longhorn(){
-    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y  open-iscsi curl util-linux nfs-common
-    systemctl start iscsid.service
-    systemctl enable iscsid.service
+  DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y  open-iscsi curl util-linux nfs-common
+  systemctl start iscsid.service
+  systemctl enable iscsid.service
 }
 
 install_oci_cli(){
@@ -58,38 +58,48 @@ install_oci_cli(){
 }
 
 setup_repos(){
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg |  gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg |  gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
-    echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-    $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-    curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+  curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
 
-    echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+  echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
 
-    apt-get update
+  apt-get update
+}
+
+render_crictl_conf(){
+cat <<-EOF | tee /etc/crictl.yaml
+---
+runtime-endpoint: unix:///var/run/containerd/containerd.sock
+image-endpoint: unix:///var/run/containerd/containerd.sock
+EOF
 }
 
 setup_cri(){
-    apt-get update
-    apt-get install -y containerd.io
-    mkdir -p /etc/containerd
-    cat /etc/containerd/config.toml | grep -Fx "[grpc]"
-    res=$?
-    if [ $res -ne 0 ]; then
-        containerd config default | tee /etc/containerd/config.toml
-    fi
-    sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-    systemctl restart containerd
-    systemctl enable containerd
+  apt-get update
+  apt-get install -y containerd.io
+  mkdir -p /etc/containerd
+  cat /etc/containerd/config.toml | grep -Fx "[grpc]"
+  res=$?
+  if [ $res -ne 0 ]; then
+      containerd config default | tee /etc/containerd/config.toml
+  fi
+  sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+  render_crictl_conf
+
+  systemctl restart containerd
+  systemctl enable containerd
 }
 
 install_k8s_utils(){
-    sleep 5
-    apt-get update
-    apt-get install -y kubelet=${k8s_version}* kubeadm=${k8s_version}* kubectl=${k8s_version}*
-    apt-mark hold kubelet kubeadm kubectl
+  sleep 5
+  apt-get update
+  apt-get install -y kubelet=${k8s_version}* kubeadm=${k8s_version}* kubectl=${k8s_version}*
+  apt-mark hold kubelet kubeadm kubectl
 }
 
 preflight

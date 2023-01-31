@@ -125,7 +125,7 @@ variable "k8s_worker_pool_size" {
 
 variable "k8s_version" {
   type    = string
-  default = "1.23.5"
+  default = "1.25.6"
 }
 
 variable "k8s_pod_subnet" {
