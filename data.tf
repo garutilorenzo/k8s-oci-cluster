@@ -27,6 +27,7 @@ data "cloudinit_config" "k8s_server_tpl" {
       install_longhorn          = var.install_longhorn,
       longhorn_release          = var.longhorn_release,
       install_nginx_ingress     = var.install_nginx_ingress,
+      nginx_ingress_release     = var.nginx_ingress_release,
       extlb_listener_http_port  = var.extlb_listener_http_port,
       extlb_listener_https_port = var.extlb_listener_https_port,
     })

@@ -107,8 +107,6 @@ variable "region" {
 module "k8s_cluster" {
   PATH_TO_PUBLIC_KEY     = "<change_me>"
   PATH_TO_PRIVATE_KEY    = "<change_me>"
-  PATH_TO_PUBLIC_LB_CERT = "<change_me>"
-  PATH_TO_PUBLIC_LB_KEY  = "<change_me>"
   region                 = var.region
   availability_domain    = "<change_me>"
   compartment_ocid       = var.compartment_ocid
@@ -176,69 +174,6 @@ rerun this command to reinitialize your working directory. If you forget, other
 commands will detect it and remind you to do so if necessary.
 ```
 
-#### Generate sel signed SSL certificate for the public LB (L7)
-
-**NOTE** If you already own a valid certificate skip this step and set the correct values for the variables: PATH_TO_PUBLIC_LB_CERT and PATH_TO_PUBLIC_LB_KEY
-
-We need to generate the certificates (sel signed) for our public load balancer (Layer 7). To do this we need *openssl*, open a terminal and follow this step:
-
-Generate the key:
-
-```
-openssl genrsa 2048 > privatekey.pem
-Generating RSA private key, 2048 bit long modulus (2 primes)
-.......+++++
-...............+++++
-e is 65537 (0x010001)
-```
-
-Generate the a new certificate request:
-
-```
-openssl req -new -key privatekey.pem -out csr.pem
-You are about to be asked to enter information that will be incorporated
-into your certificate request.
-What you are about to enter is what is called a Distinguished Name or a DN.
-There are quite a few fields but you can leave some blank
-For some fields there will be a default value,
-If you enter '.', the field will be left blank.
------
-Country Name (2 letter code) [AU]:IT
-State or Province Name (full name) [Some-State]:Italy
-Locality Name (eg, city) []:Brescia
-Organization Name (eg, company) [Internet Widgits Pty Ltd]:GL Ltd
-Organizational Unit Name (eg, section) []:IT
-Common Name (e.g. server FQDN or YOUR name) []:testlb.domainexample.com
-Email Address []:email@you.com
-
-Please enter the following 'extra' attributes
-to be sent with your certificate request
-A challenge password []:
-An optional company name []:
-```
-
-Generate the public CRT:
-
-```
-openssl x509 -req -days 365 -in csr.pem -signkey privatekey.pem -out public.crt
-Signature ok
-subject=C = IT, ST = Italy, L = Brescia, O = GL Ltd, OU = IT, CN = testlb.domainexample.com, emailAddress = email@you.com
-Getting Private key
-```
-
-This is the final result:
-
-```
-ls
-
-csr.pem  privatekey.pem  public.crt
-```
-
-Now set the variables:
-
-* PATH_TO_PUBLIC_LB_CERT: ~/full_path/public.crt
-* PATH_TO_PUBLIC_LB_KEY: ~/full_path/privatekey.pem
-
 ### Oracle provider setup
 
 In the *example/* directory of this repo you need to create a terraform.tfvars file, the file will look like:
@@ -270,8 +205,6 @@ Once you have created the terraform.tfvars file edit the main.tf file (always in
 | `compartment_ocid` | `yes`        | Set the correct compartment ocid. See [how](#oracle-provider-setup) to find the compartment ocid |
 | `my_public_ip_cidr` | `yes`        |  your public ip in cidr format (Example: 195.102.xxx.xxx/32) |
 | `environment`  | `yes`  | Current work environment (Example: staging/dev/prod). This value is used for tag all the deployed resources |
-| `PATH_TO_PUBLIC_LB_CERT`  | `yes`  | Path to the public LB certificate. See [how to](#generate-sel-signed-ssl-certificate-for-the-public-lb-l7) generate the certificate |
-| `PATH_TO_PUBLIC_LB_KEY`  | `yes`  | Path to the public LB key. See [how to](#generate-sel-signed-ssl-certificate-for-the-public-lb-l7) generate the key |
 | `compute_shape`  | `no`  | Compute shape to use. Default VM.Standard.A1.Flex. **NOTE** Is mandatory to use this compute shape for provision 4 always free VMs |
 | `os_image_id`  | `no`  | Image id to use. Default image: Canonical-Ubuntu-20.04-aarch64-2022.01.18-0. See [how](#how-to-list-all-the-os-images) to list all available OS images |
 | `oci_core_vcn_dns_label`  | `no`  | VCN DNS label. Default: defaultvcn |

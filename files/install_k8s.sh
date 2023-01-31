@@ -125,60 +125,89 @@ EOF
 }
 
 render_nginx_config(){
-cat <<-EOF > /root/nginx-ingress-config.yaml
+cat << 'EOF' > "$NGINX_RESOURCES_FILE"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    app.kubernetes.io/component: controller
-    app.kubernetes.io/instance: ingress-nginx
-    app.kubernetes.io/name: ingress-nginx
-    app.kubernetes.io/part-of: ingress-nginx
-    app.kubernetes.io/version: 1.1.3
-  name: ingress-nginx-controller
+  name: ingress-nginx-controller-loadbalancer
   namespace: ingress-nginx
 spec:
-  ports:
-  - appProtocol: http
-    name: http
-    port: 80
-    protocol: TCP
-    targetPort: http
-    nodePort: ${extlb_listener_http_port}
-  - appProtocol: https
-    name: https
-    port: 443
-    protocol: TCP
-    targetPort: https
-    nodePort: ${extlb_listener_https_port}
   selector:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: ingress-nginx
     app.kubernetes.io/name: ingress-nginx
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+      nodePort: ${ingress_controller_http_nodeport}
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 443
+      nodePort: ${ingress_controller_https_nodeport}
   type: NodePort
 ---
 apiVersion: v1
 data:
   allow-snippet-annotations: "true"
-  use-forwarded-headers: "true"
-  compute-full-forwarded-for: "true"
   enable-real-ip: "true"
-  forwarded-for-header: "X-Forwarded-For"
   proxy-real-ip-cidr: "0.0.0.0/0"
+  proxy-body-size: "20m"
+  use-proxy-protocol: "true"
 kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: ingress-nginx
-    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
-    app.kubernetes.io/version: 1.1.1
-    helm.sh/chart: ingress-nginx-4.0.16
+    app.kubernetes.io/version: ${nginx_ingress_release}
   name: ingress-nginx-controller
   namespace: ingress-nginx
 EOF
+}
+
+render_longhorn_config(){
+cat << 'EOF' > "$LONGHORN_RESOURCES_FILE"
+---
+# Builtin: "helm template" does not respect --create-namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longhorn-system
+---
+# Source: longhorn/templates/default-setting.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: longhorn-default-setting
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: longhorn
+    app.kubernetes.io/instance: longhorn
+    app.kubernetes.io/version: ${longhorn_release}
+data:
+  default-setting.yaml: |-
+    guaranteed-engine-manager-cpu: 0
+    guaranteed-replica-manager-cpu: 0
+EOF
+}
+
+install_and_configure_longhorn(){
+  LONGHORN_RESOURCES_FILE=/root/longhorn-ingress-resources.yaml
+  render_longhorn_config
+  kubectl apply -f $LONGHORN_RESOURCES_FILE
+  kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/${longhorn_release}/deploy/longhorn.yaml
+}
+
+install_and_configure_nginx(){
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-${nginx_ingress_release}/deploy/static/provider/baremetal/deploy.yaml
+  NGINX_RESOURCES_FILE=/root/nginx-ingress-resources.yaml
+  render_nginx_config
+  kubectl apply -f $NGINX_RESOURCES_FILE
 }
 
 k8s_join(){
@@ -208,7 +237,6 @@ generate_s3_object(){
   oci vault secret update-base64 --secret-id $hash_ocid  --secret-content-content $HASH_BASE64
   oci vault secret update-base64 --secret-id $token_ocid  --secret-content-content $TOKEN
   oci vault secret update-base64 --secret-id $cert_ocid  --secret-content-content $CERT_BASE64
-
 }
 
 k8s_init(){
@@ -237,20 +265,10 @@ if [[ "$first_instance" == "$instance_id" ]] && [[ "$control_plane_status" -ne 4
   sleep 180
   wait_for_masters
   %{ if install_nginx_ingress }
-  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/baremetal/deploy.yaml
-  render_nginx_config
-  kubectl apply -f /root/nginx-ingress-config.yaml
+  install_and_configure_nginx
   %{ endif }
   %{ if install_longhorn }
-  ## ONE CPU FIX
-  ## BAD SOLUTION FOR PROD ENVIRONMENT
-  # kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/${longhorn_release}/deploy/longhorn.yaml
-  curl -o longhorn.yaml https://raw.githubusercontent.com/longhorn/longhorn/${longhorn_release}/deploy/longhorn.yaml
-  sed -i 's/guaranteed-engine-manager-cpu:/guaranteed-engine-manager-cpu: 0/' longhorn.yaml
-  sed -i 's/guaranteed-replica-manager-cpu:/guaranteed-replica-manager-cpu: 0/' longhorn.yaml
-  kubectl apply -f longhorn.yaml
-  ## END - ONE CPU FIX
-  kubectl create -f https://raw.githubusercontent.com/longhorn/longhorn/${longhorn_release}/examples/storageclass.yaml
+  install_and_configure_longhorn
   %{ endif }
   # Make Master nodes schedulable since we have only 4 nodes
   kubectl taint nodes --all node-role.kubernetes.io/master-

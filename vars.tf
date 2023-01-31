@@ -113,19 +113,9 @@ variable "https_lb_port" {
   default = 443
 }
 
-variable "PATH_TO_PUBLIC_LB_CERT" {
-  type        = string
-  description = "Path to the public LB https certificate"
-}
-
-variable "PATH_TO_PUBLIC_LB_KEY" {
-  type        = string
-  description = "Path to the public LB key"
-}
-
 variable "k8s_server_pool_size" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "k8s_worker_pool_size" {
@@ -179,6 +169,11 @@ variable "install_nginx_ingress" {
   default = false
 }
 
+variable "nginx_ingress_release" {
+  type    = string
+  default = "v1.5.1"
+}
+
 variable "install_longhorn" {
   type    = bool
   default = false
@@ -186,7 +181,7 @@ variable "install_longhorn" {
 
 variable "longhorn_release" {
   type    = string
-  default = "v1.2.3"
+  default = "v1.4.0"
 }
 
 variable "hash_secret_name" {
@@ -202,4 +197,9 @@ variable "token_secret_name" {
 variable "cert_secret_name" {
   type    = string
   default = "k8s-cert"
+}
+
+variable "k8s_extra_worker_node" {
+  type    = bool
+  default = true
 }
