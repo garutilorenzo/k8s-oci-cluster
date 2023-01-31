@@ -17,6 +17,41 @@ resource "oci_load_balancer_load_balancer" "k8s_public_lb" {
   }
 }
 
+# resource "oci_load_balancer_listener" "k8s_kubeapi_listener" {
+#   default_backend_set_name = oci_load_balancer_backend_set.k8s_test_backend_set.name
+#   load_balancer_id         = oci_load_balancer_load_balancer.k8s_public_lb.id
+#   name                     = "k8s_kubeapi_listener"
+#   port                     = 6443
+#   protocol                 = "TCP"
+#   connection_configuration {
+#     idle_timeout_in_seconds            = 300
+#     backend_tcp_proxy_protocol_version = 2
+#   }
+# }
+
+# resource "oci_load_balancer_backend_set" "k8s_kubeapi_backend_set" {
+#   health_checker {
+#     protocol = "TCP"
+#     port     = 6443
+#   }
+
+#   load_balancer_id = oci_load_balancer_load_balancer.k8s_public_lb.id
+#   name             = "k8s_kubeapi_backend_set"
+#   policy           = "ROUND_ROBIN"
+# }
+
+# resource "oci_load_balancer_backend" "k8s_kubeapi_backend" {
+#   depends_on = [
+#     oci_core_instance_pool.k8s_servers,
+#   ]
+
+#   count            = var.install_nginx_ingress ? var.k8s_worker_pool_size : 0
+#   backendset_name  = oci_load_balancer_backend_set.k8s_kubeapi_backend_set.name
+#   ip_address       = data.oci_core_instance.k8s_servers_instances_ips.private_ip
+#   load_balancer_id = oci_load_balancer_load_balancer.k8s_public_lb.id
+#   port             = 6443
+# }
+
 # HTTP 
 resource "oci_load_balancer_listener" "k8s_http_listener" {
   count                    = var.install_nginx_ingress ? 1 : 0

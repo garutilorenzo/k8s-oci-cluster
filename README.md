@@ -296,7 +296,6 @@ Once you have created the terraform.tfvars file edit the main.tf file (always in
 | `extlb_listener_https_port`  | `no`  | HTTPS nodeport where nginx ingress controller will listen. Default 30443 |
 | `k8s_server_pool_size`  | `no`  | Number of k8s servers deployed. Default 2  |
 | `k8s_worker_pool_size`  | `no`  | Number of k8s workers deployed. Default 2  |
-| `oci_bucket_name`  | `no`  | Bucket name used for sharing the kubernetes token used for joining the cluster. Default: my-very-secure-k8s-bucket  |
 | `install_nginx_ingress`  | `no`  | Boolean value, install kubernetes nginx ingress controller. Default: false. |
 | `install_longhorn`  | `no`  | Boolean value, install longhorn "Cloud native distributed block storage for Kubernetes". Default: false  |
 | `longhorn_release`  | `no`  | Longhorn release. Default: v1.2.3  |

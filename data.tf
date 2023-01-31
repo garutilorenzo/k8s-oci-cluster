@@ -1,4 +1,4 @@
-data "template_cloudinit_config" "k8s_server_tpl" {
+data "cloudinit_config" "k8s_server_tpl" {
   gzip          = true
   base64_encode = true
 
@@ -11,13 +11,17 @@ data "template_cloudinit_config" "k8s_server_tpl" {
     content_type = "text/x-shellscript"
     content = templatefile("${path.module}/files/install_k8s.sh", {
       is_k8s_server             = true,
+      cluster_name              = var.cluster_name,
+      environment               = var.environment,
       compartment_ocid          = var.compartment_ocid,
       availability_domain       = var.availability_domain,
       k8s_version               = var.k8s_version,
       k8s_dns_domain            = var.k8s_dns_domain,
       k8s_pod_subnet            = var.k8s_pod_subnet,
       k8s_service_subnet        = var.k8s_service_subnet,
-      oci_bucket_name           = var.oci_bucket_name,
+      hash_secret_name          = var.hash_secret_name,
+      token_secret_name         = var.token_secret_name,
+      cert_secret_name          = var.cert_secret_name,
       kube_api_port             = var.kube_api_port,
       control_plane_url         = local.k8s_int_lb_dns_name,
       install_longhorn          = var.install_longhorn,
@@ -29,7 +33,7 @@ data "template_cloudinit_config" "k8s_server_tpl" {
   }
 }
 
-data "template_cloudinit_config" "k8s_worker_tpl" {
+data "cloudinit_config" "k8s_worker_tpl" {
   gzip          = true
   base64_encode = true
 
@@ -42,7 +46,11 @@ data "template_cloudinit_config" "k8s_worker_tpl" {
     content_type = "text/x-shellscript"
     content = templatefile("${path.module}/files/install_k8s_worker.sh", {
       is_k8s_server     = false,
-      oci_bucket_name   = var.oci_bucket_name,
+      environment       = var.environment,
+      compartment_ocid  = var.compartment_ocid,
+      hash_secret_name  = var.hash_secret_name,
+      token_secret_name = var.token_secret_name,
+      cert_secret_name  = var.cert_secret_name,
       kube_api_port     = var.kube_api_port,
       control_plane_url = local.k8s_int_lb_dns_name,
     })

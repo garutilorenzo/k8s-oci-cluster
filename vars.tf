@@ -14,8 +14,9 @@ variable "environment" {
   type = string
 }
 
-variable "uuid" {
-  type = string
+variable "cluster_name" {
+  type    = string
+  default = "kubernetes"
 }
 
 variable "fault_domains" {
@@ -158,16 +159,6 @@ variable "kube_api_port" {
   description = "Kubeapi Port"
 }
 
-variable "unique_tag_key" {
-  type    = string
-  default = "k8s-provisioner"
-}
-
-variable "unique_tag_value" {
-  type    = string
-  default = "https://github.com/garutilorenzo/k8s-oci-cluster"
-}
-
 variable "extlb_listener_http_port" {
   type    = number
   default = 30080
@@ -198,7 +189,17 @@ variable "longhorn_release" {
   default = "v1.2.3"
 }
 
-variable "oci_bucket_name" {
+variable "hash_secret_name" {
   type    = string
-  default = "my-very-secure-k8s-bucket"
+  default = "k8s-hash"
+}
+
+variable "token_secret_name" {
+  type    = string
+  default = "k8s-token"
+}
+
+variable "cert_secret_name" {
+  type    = string
+  default = "k8s-cert"
 }

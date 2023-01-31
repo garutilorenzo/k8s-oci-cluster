@@ -43,5 +43,23 @@ resource "oci_core_network_security_group_security_rule" "allow_https_from_all" 
       min = var.https_lb_port
     }
   }
-
 }
+
+# resource "oci_core_network_security_group_security_rule" "kubeapi" {
+#   network_security_group_id = oci_core_network_security_group.public_lb_nsg.id
+#   direction                 = "INGRESS"
+#   protocol                  = 6 # tcp
+
+#   description = "kubeapi rule"
+
+#   source      = var.my_public_ip_cidr
+#   source_type = "CIDR_BLOCK"
+#   stateless   = false
+
+#   tcp_options {
+#     destination_port_range {
+#       max = 6443
+#       min = 6443
+#     }
+#   }
+# }

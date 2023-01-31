@@ -14,8 +14,11 @@ render_kubejoin(){
 
 HOSTNAME=$(hostname)
 ADVERTISE_ADDR=$(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')
-CA_HASH=$(oci os object get -bn ${oci_bucket_name} --name ca.txt --file -)
-KUBEADM_TOKEN=$(oci os object get -bn ${oci_bucket_name} --name kubeadm_token.txt --file -)
+hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}") | .id')
+token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}") | .id')
+
+CA_HASH=$(oci vault secret get --secret-id $hash_ocid | base64 -d)
+KUBEADM_TOKEN=$(oci vault secret get --secret-id $token_ocid | base64 -d)
 
 cat <<-EOF > /root/kubeadm-join-worker.yaml
 ---

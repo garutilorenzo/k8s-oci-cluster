@@ -30,7 +30,7 @@ apiServer:
   timeoutForControlPlane: 4m0s
 apiVersion: kubeadm.k8s.io/v1beta3
 certificatesDir: /etc/kubernetes/pki
-clusterName: kubernetes
+clusterName: ${cluster_name}
 controllerManager: {}
 dns: {}
 imageRepository: k8s.gcr.io
@@ -89,9 +89,13 @@ render_kubejoin(){
 
 HOSTNAME=$(hostname)
 ADVERTISE_ADDR=$(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')
-CA_HASH=$(oci os object get -bn ${oci_bucket_name} --name ca.txt --file -)
-KUBEADM_CERT=$(oci os object get -bn ${oci_bucket_name} --name kubeadm_cert.txt --file -)
-KUBEADM_TOKEN=$(oci os object get -bn ${oci_bucket_name} --name kubeadm_token.txt --file -)
+hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}") | .id')
+token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}") | .id')
+cert_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${cert_secret_name}-${environment}") | .id')
+
+CA_HASH=$(oci vault secret get --secret-id $hash_ocid | base64 -d)
+KUBEADM_CERT=$(oci vault secret get --secret-id $cert_ocid | base64 -d)
+KUBEADM_TOKEN=$(oci vault secret get --secret-id $token_ocid | base64 -d)
 
 cat <<-EOF > /root/kubeadm-join-master.yaml
 ---
@@ -185,17 +189,26 @@ k8s_join(){
 
 generate_s3_object(){
   HASH=$(openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //')
+  HASH_BASE64=$(echo $HASH | base64 -w0)
   echo $HASH > /tmp/ca.txt
 
   TOKEN=$(kubeadm token create)
   echo $TOKEN > /tmp/kubeadm_token.txt
+  TOKEN_BASE64=$(echo $TOKEN | base64 -w0)
 
   CERT=$(kubeadm init phase upload-certs --upload-certs | tail -n 1)
   echo $CERT > /tmp/kubeadm_cert.txt
+  CERT_BASE64=$(echo $CERT | base64 -w0)
 
-  oci os object put --force -bn ${oci_bucket_name} --file /tmp/ca.txt
-  oci os object put --force -bn ${oci_bucket_name} --file /tmp/kubeadm_token.txt
-  oci os object put --force -bn ${oci_bucket_name} --file /tmp/kubeadm_cert.txt
+  hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}") | .id')
+  token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}") | .id')
+  cert_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${cert_secret_name}-${environment}") | .id')
+  
+
+  oci vault secret update-base64 --secret-id $hash_ocid  --secret-content-content $HASH_BASE64
+  oci vault secret update-base64 --secret-id $token_ocid  --secret-content-content $TOKEN
+  oci vault secret update-base64 --secret-id $cert_ocid  --secret-content-content $CERT_BASE64
+
 }
 
 k8s_init(){
