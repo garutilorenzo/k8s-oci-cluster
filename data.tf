@@ -23,7 +23,7 @@ data "cloudinit_config" "k8s_server_tpl" {
       token_secret_name                 = var.token_secret_name,
       cert_secret_name                  = var.cert_secret_name,
       kube_api_port                     = var.kube_api_port,
-      control_plane_url                 = local.k8s_int_lb_dns_name,
+      control_plane_ip                  = oci_load_balancer_load_balancer.k8s_load_balancer.ip_address_details[0].ip_address,
       install_longhorn                  = var.install_longhorn,
       longhorn_release                  = var.longhorn_release,
       install_nginx_ingress             = var.install_nginx_ingress,
@@ -55,7 +55,7 @@ data "cloudinit_config" "k8s_worker_tpl" {
       token_secret_name                 = var.token_secret_name,
       cert_secret_name                  = var.cert_secret_name,
       kube_api_port                     = var.kube_api_port,
-      control_plane_url                 = local.k8s_int_lb_dns_name,
+      control_plane_ip                  = oci_load_balancer_load_balancer.k8s_load_balancer.ip_address_details[0].ip_address,
       install_longhorn                  = var.install_longhorn,
       install_nginx_ingress             = var.install_nginx_ingress,
       ingress_controller_http_nodeport  = var.ingress_controller_http_nodeport

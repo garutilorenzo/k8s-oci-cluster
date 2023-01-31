@@ -17,7 +17,7 @@ kind: JoinConfiguration
 discovery:
   bootstrapToken:
     token: $KUBEADM_TOKEN
-    apiServerEndpoint: ${control_plane_url}:${kube_api_port}
+    apiServerEndpoint: ${control_plane_ip}:${kube_api_port}
     caCertHashes: 
       - sha256:$CA_HASH
 localAPIEndpoint:
@@ -143,7 +143,7 @@ nginx -t
 systemctl restart nginx
 }
 
-until $(curl -k --output /dev/null --silent --head -X GET https://${control_plane_url}:${kube_api_port}); do
+until $(curl -k --output /dev/null --silent --head -X GET https://${control_plane_ip}:${kube_api_port}); do
   printf '.'
   sleep 5
 done

@@ -36,7 +36,7 @@ dns: {}
 imageRepository: k8s.gcr.io
 kind: ClusterConfiguration
 kubernetesVersion: ${k8s_version}
-controlPlaneEndpoint: ${control_plane_url}:${kube_api_port }
+controlPlaneEndpoint: ${control_plane_ip}:${kube_api_port }
 networking:
   dnsDomain: ${k8s_dns_domain}
   podSubnet: ${k8s_pod_subnet}
@@ -94,7 +94,7 @@ kind: JoinConfiguration
 discovery:
   bootstrapToken:
     token: $KUBEADM_TOKEN
-    apiServerEndpoint: ${control_plane_url}:${kube_api_port}
+    apiServerEndpoint: ${control_plane_ip}:${kube_api_port}
     caCertHashes: 
       - sha256:$CA_HASH
 controlPlane:
@@ -242,7 +242,7 @@ setup_cni(){
 export OCI_CLI_AUTH=instance_principal
 first_instance=$(oci compute instance list --compartment-id ${compartment_ocid} --availability-domain ${availability_domain} --lifecycle-state RUNNING --sort-by TIMECREATED  | jq -r '.data[]|select(."display-name" | endswith("k8s-servers")) | .["display-name"]' | tail -n 1)
 instance_id=$(curl -s -H "Authorization: Bearer Oracle" -L http://169.254.169.254/opc/v2/instance | jq -r '.displayName')
-control_plane_status=$(curl --connect-timeout 10 -o /dev/null -L -k -s -w '%%{http_code}' https://${control_plane_url}:${kube_api_port})
+control_plane_status=$(curl --connect-timeout 10 -o /dev/null -L -k -s -w '%%{http_code}' https://${control_plane_ip}:${kube_api_port})
 
 if [[ "$first_instance" == "$instance_id" ]] && [[ "$control_plane_status" -ne 403 ]]; then
   render_kubeinit

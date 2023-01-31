@@ -30,5 +30,4 @@ resource "oci_core_instance_pool" "k8s_servers" {
       k8s-instance-type = "k8s-server"
     }
   )
-
 }
