@@ -4,11 +4,32 @@ render_kubejoin(){
 
 HOSTNAME=$(hostname)
 ADVERTISE_ADDR=$(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')
-hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}") | .id')
-token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}") | .id')
+hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
+token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
 
-CA_HASH=$(oci vault secret get --secret-id $hash_ocid | base64 -d)
-KUBEADM_TOKEN=$(oci vault secret get --secret-id $token_ocid | base64 -d)
+hash_default_value="empty hash secret"
+token_default_value="empty token secret"
+
+CA_HASH=$(oci secrets secret-bundle get --secret-id --secret-id $hash_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+
+until [ "$CA_HASH" != "$hash_default_value" ]
+do
+  echo "CA not updated.."
+  echo "wait 10 seconds"
+  sleep 10
+  CA_HASH=$(oci secrets secret-bundle get --secret-id $hash_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+  echo $CA_HASH
+done
+
+until [ "$KUBEADM_TOKEN" != "$token_default_value" ]
+do
+  echo "Kubeadm token not updated.."
+  echo "wait 10 seconds"
+  sleep 10
+  KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+  echo $KUBEADM_TOKEN
+done
 
 cat <<-EOF > /root/kubeadm-join-worker.yaml
 ---
@@ -36,6 +57,10 @@ EOF
 }
 
 k8s_join(){
+  # # Workaround
+  # crictl pull k8s.gcr.io/coredns/coredns:v1.9.3
+  # ctr --namespace=k8s.io image tag k8s.gcr.io/coredns/coredns:v1.9.3 k8s.gcr.io/coredns:v1.9.3
+
   kubeadm join --ignore-preflight-errors=NumCPU --config /root/kubeadm-join-worker.yaml
 }
 

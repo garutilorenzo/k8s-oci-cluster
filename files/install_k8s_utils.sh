@@ -25,15 +25,15 @@ preflight(){
   apt-get update && apt-get upgrade -y
 
   apt-get install -y \
-      ca-certificates \
-      unzip \
-      software-properties-common \
-      curl \
-      gnupg \
-      openssl \
-      lsb-release \
-      apt-transport-https \
-      jq
+    ca-certificates \
+    unzip \
+    software-properties-common \
+    curl \
+    gnupg \
+    openssl \
+    lsb-release \
+    apt-transport-https \
+    jq
   
   render_config
   
@@ -86,9 +86,10 @@ setup_cri(){
   cat /etc/containerd/config.toml | grep -Fx "[grpc]"
   res=$?
   if [ $res -ne 0 ]; then
-      containerd config default | tee /etc/containerd/config.toml
+    containerd config default | tee /etc/containerd/config.toml
   fi
   sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
   render_crictl_conf
 
   systemctl restart containerd

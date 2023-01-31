@@ -33,7 +33,7 @@ certificatesDir: /etc/kubernetes/pki
 clusterName: ${cluster_name}
 controllerManager: {}
 dns: {}
-imageRepository: k8s.gcr.io
+imageRepository: registry.k8s.io
 kind: ClusterConfiguration
 kubernetesVersion: ${k8s_version}
 controlPlaneEndpoint: ${control_plane_ip}:${kube_api_port }
@@ -79,13 +79,44 @@ render_kubejoin(){
 
 HOSTNAME=$(hostname)
 ADVERTISE_ADDR=$(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')
-hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}") | .id')
-token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}") | .id')
-cert_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${cert_secret_name}-${environment}") | .id')
+hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
+token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
+cert_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${cert_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
 
-CA_HASH=$(oci vault secret get --secret-id $hash_ocid | base64 -d)
-KUBEADM_CERT=$(oci vault secret get --secret-id $cert_ocid | base64 -d)
-KUBEADM_TOKEN=$(oci vault secret get --secret-id $token_ocid | base64 -d)
+hash_default_value="empty hash secret"
+token_default_value="empty token secret"
+cert_default_value="empty cert secret"
+
+CA_HASH=$(oci secrets secret-bundle get --secret-id --secret-id $hash_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+KUBEADM_CERT=$(oci secrets secret-bundle get --secret-id $cert_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+
+until [ "$CA_HASH" != "$hash_default_value" ]
+do
+  echo "CA not updated.."
+  echo "wait 10 seconds"
+  sleep 10
+  CA_HASH=$(oci secrets secret-bundle get --secret-id $hash_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+  echo $CA_HASH
+done
+
+until [ "$KUBEADM_TOKEN" != "$token_default_value" ]
+do
+  echo "Kubeadm token not updated.."
+  echo "wait 10 seconds"
+  sleep 10
+  KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+  echo $KUBEADM_TOKEN
+done
+
+until [ "$KUBEADM_CERT" != "$cert_default_value" ]
+do
+  echo "Kubeadm cert not updated.."
+  echo "wait 10 seconds"
+  sleep 10
+  KUBEADM_CERT=$(oci secrets secret-bundle get --secret-id $cert_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+  echo $KUBEADM_CERT
+done
 
 cat <<-EOF > /root/kubeadm-join-master.yaml
 ---
@@ -206,7 +237,7 @@ k8s_join(){
   cp /etc/kubernetes/admin.conf ~/.kube/config
 }
 
-generate_s3_object(){
+generate_vault_secrets(){
   HASH=$(openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //')
   HASH_BASE64=$(echo $HASH | base64 -w0)
   echo $HASH > /tmp/ca.txt
@@ -219,17 +250,20 @@ generate_s3_object(){
   echo $CERT > /tmp/kubeadm_cert.txt
   CERT_BASE64=$(echo $CERT | base64 -w0)
 
-  hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}") | .id')
-  token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}") | .id')
-  cert_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${cert_secret_name}-${environment}") | .id')
+  hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
+  token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}") and ."lifecycle-state" == "ACTIVE") | .id')
+  cert_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${cert_secret_name}-${environment}") and ."lifecycle-state" == "ACTIVE") | .id')
   
-
   oci vault secret update-base64 --secret-id $hash_ocid  --secret-content-content $HASH_BASE64
-  oci vault secret update-base64 --secret-id $token_ocid  --secret-content-content $TOKEN
+  oci vault secret update-base64 --secret-id $token_ocid --secret-content-content $TOKEN
   oci vault secret update-base64 --secret-id $cert_ocid  --secret-content-content $CERT_BASE64
 }
 
 k8s_init(){
+  # # Workaround
+  # crictl pull k8s.gcr.io/coredns/coredns:v1.9.3
+  # ctr --namespace=k8s.io image tag k8s.gcr.io/coredns/coredns:v1.9.3 k8s.gcr.io/coredns:v1.9.3
+  
   kubeadm init --ignore-preflight-errors=NumCPU --config /root/kubeadm-init-config.yaml
   mkdir ~/.kube
   cp /etc/kubernetes/admin.conf ~/.kube/config
@@ -250,7 +284,7 @@ if [[ "$first_instance" == "$instance_id" ]] && [[ "$control_plane_status" -ne 4
   setup_env
   wait_for_pods
   setup_cni
-  generate_s3_object
+  generate_vault_secrets
   echo "Wait 180 seconds for control-planes to join"
   sleep 180
   wait_for_masters
