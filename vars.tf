@@ -174,6 +174,16 @@ variable "nginx_ingress_release" {
   default = "v1.5.1"
 }
 
+variable "ingress_controller_http_nodeport" {
+  type    = number
+  default = 30080
+}
+
+variable "ingress_controller_https_nodeport" {
+  type    = number
+  default = 30443
+}
+
 variable "install_longhorn" {
   type    = bool
   default = false
