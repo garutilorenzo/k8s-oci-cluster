@@ -250,12 +250,12 @@ generate_vault_secrets(){
   echo $CERT > /tmp/kubeadm_cert.txt
   CERT_BASE64=$(echo $CERT | base64 -w0)
 
-  hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" ==  "${hash_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
-  token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}") and ."lifecycle-state" == "ACTIVE") | .id')
-  cert_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${cert_secret_name}-${environment}") and ."lifecycle-state" == "ACTIVE") | .id')
+  hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid}  | jq -r '.data[] | select(."secret-name" == "${hash_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
+  token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r '.data[] | select(."secret-name" == "${token_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
+  cert_ocid=$(oci vault secret list --compartment-id ${compartment_ocid}  | jq -r '.data[] | select(."secret-name" == "${cert_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
   
   oci vault secret update-base64 --secret-id $hash_ocid  --secret-content-content $HASH_BASE64
-  oci vault secret update-base64 --secret-id $token_ocid --secret-content-content $TOKEN
+  oci vault secret update-base64 --secret-id $token_ocid --secret-content-content $TOKEN_BASE64
   oci vault secret update-base64 --secret-id $cert_ocid  --secret-content-content $CERT_BASE64
 }
 
