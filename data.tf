@@ -4,9 +4,9 @@ data "cloudinit_config" "k8s_server_tpl" {
 
   part {
     content_type = "text/x-shellscript"
-    content      = templatefile("${path.module}/files/install_k8s_utils.sh", { 
-      k8s_version = var.k8s_version, 
-      install_longhorn = var.install_longhorn, 
+    content = templatefile("${path.module}/files/install_k8s_utils.sh", {
+      k8s_version      = var.k8s_version,
+      install_longhorn = var.install_longhorn,
     })
   }
 
@@ -45,9 +45,9 @@ data "cloudinit_config" "k8s_worker_tpl" {
 
   part {
     content_type = "text/x-shellscript"
-    content      = templatefile("${path.module}/files/install_k8s_utils.sh", { 
-      k8s_version = var.k8s_version, 
-      install_longhorn = var.install_longhorn 
+    content = templatefile("${path.module}/files/install_k8s_utils.sh", {
+      k8s_version      = var.k8s_version,
+      install_longhorn = var.install_longhorn
     })
   }
 
