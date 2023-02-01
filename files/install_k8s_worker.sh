@@ -1,5 +1,28 @@
 #!/bin/bash
 
+check_os(){
+  name=$(cat /etc/os-release | grep ^NAME= | sed 's/"//g')
+  clean_name=$${name#*=}
+
+  version=$(cat /etc/os-release | grep ^VERSION_ID= | sed 's/"//g')
+  clean_version=$${version#*=}
+  major=$${clean_version%.*}
+  minor=$${clean_version#*.}
+  
+  if [[ "$clean_name" == "Ubuntu" ]]; then
+    operating_system="ubuntu"
+  elif [[ "$clean_name" == "Oracle Linux Server" ]]; then
+    operating_system="oraclelinux"
+  else
+    operating_system="undef"
+  fi
+
+  echo "K3S install process running on: "
+  echo "OS: $operating_system"
+  echo "OS Major Release: $major"
+  echo "OS Minor Release: $minor"
+}
+
 render_kubejoin(){
 
 HOSTNAME=$(hostname)
@@ -65,9 +88,19 @@ k8s_join(){
 }
 
 proxy_protocol_stuff(){
-DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y python3 python3-pip nginx
-systemctl enable nginx
-pip install oci-cli
+if [[ "$operating_system" == "ubuntu" ]]; then
+  DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y nginx
+  systemctl enable nginx
+fi
+
+if [[ "$operating_system" == "oraclelinux" ]]; then
+  if [[ $major -eq 8 ]]; then
+    dnf -y module enable nginx:1.20
+  fi
+  dnf -y install nginx-all-modules
+  # Nginx Selinux Fix
+  setsebool httpd_can_network_connect on -P
+fi
 
 cat << 'EOF' > /root/find_ips.sh
 export OCI_CLI_AUTH=instance_principal
@@ -94,8 +127,15 @@ do
 done
 EOF
 
-NGINX_MODULE=/usr/lib/nginx/modules/ngx_stream_module.so
-NGINX_USER=www-data
+if [[ "$operating_system" == "ubuntu" ]]; then
+  NGINX_MODULE=/usr/lib/nginx/modules/ngx_stream_module.so
+  NGINX_USER=www-data
+fi
+
+if [[ "$operating_system" == "oraclelinux" ]]; then
+  NGINX_MODULE=/usr/lib64/nginx/modules/ngx_stream_module.so
+  NGINX_USER=nginx
+fi
 
 cat << EOD > /root/nginx-header.tpl
 load_module $NGINX_MODULE;
@@ -173,12 +213,12 @@ until $(curl -k --output /dev/null --silent --head -X GET https://${control_plan
   sleep 5
 done
 
+# Guess the Operating System
+check_os
+
 export OCI_CLI_AUTH=instance_principal
 render_kubejoin
 k8s_join
 %{ if install_nginx_ingress }
 proxy_protocol_stuff
-%{ endif }
-%{ if install_longhorn }
-DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y  open-iscsi curl util-linux
 %{ endif }
