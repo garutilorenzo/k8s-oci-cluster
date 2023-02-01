@@ -10,8 +10,8 @@ token_ocid=$(oci vault secret list --compartment-id ${compartment_ocid} | jq -r 
 hash_default_value="empty hash secret"
 token_default_value="empty token secret"
 
-CA_HASH=$(oci secrets secret-bundle get --secret-id --secret-id $hash_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
-KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+CA_HASH=$(oci secrets secret-bundle get --secret-id $hash_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
 
 until [ "$CA_HASH" != "$hash_default_value" ]
 do
@@ -27,7 +27,7 @@ do
   echo "Kubeadm token not updated.."
   echo "wait 10 seconds"
   sleep 10
-  KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+  KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
   echo $KUBEADM_TOKEN
 done
 

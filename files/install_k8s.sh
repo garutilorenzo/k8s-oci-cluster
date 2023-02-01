@@ -60,7 +60,7 @@ wait_for_pods(){
 }
 
 wait_for_masters(){
-  until kubectl get nodes -o wide | grep 'control-plane,master'; do
+  until kubectl get nodes -o wide | grep 'control-plane'; do
     echo 'Waiting for k8s control-planes'
     sleep 5
   done
@@ -87,8 +87,8 @@ hash_default_value="empty hash secret"
 token_default_value="empty token secret"
 cert_default_value="empty cert secret"
 
-CA_HASH=$(oci secrets secret-bundle get --secret-id --secret-id $hash_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
-KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+CA_HASH=$(oci secrets secret-bundle get --secret-id $hash_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
 KUBEADM_CERT=$(oci secrets secret-bundle get --secret-id $cert_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
 
 until [ "$CA_HASH" != "$hash_default_value" ]
@@ -105,7 +105,7 @@ do
   echo "Kubeadm token not updated.."
   echo "wait 10 seconds"
   sleep 10
-  KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
+  KUBEADM_TOKEN=$(oci secrets secret-bundle get --secret-id $token_ocid | jq -r '.data | ."secret-bundle-content" | .content' | base64 -d)
   echo $KUBEADM_TOKEN
 done
 
