@@ -28,6 +28,12 @@ nodeRegistration:
 ---
 apiServer:
   timeoutForControlPlane: 4m0s
+  certSANs:
+    - $HOSTNAME
+    - $ADVERTISE_ADDR
+    %{~ if expose_kubeapi ~}
+    - ${k8s_tls_san_public}
+    %{~ endif ~}
 apiVersion: kubeadm.k8s.io/v1beta3
 certificatesDir: /etc/kubernetes/pki
 clusterName: ${cluster_name}
@@ -296,6 +302,7 @@ if [[ "$first_instance" == "$instance_id" ]] && [[ "$control_plane_status" -ne 4
   %{ endif }
   # Make Master nodes schedulable since we have only 4 nodes
   kubectl taint nodes --all node-role.kubernetes.io/master-
+  kubectl taint nodes --all  node-role.kubernetes.io/control-plane-
 else
   render_kubejoin
   k8s_join

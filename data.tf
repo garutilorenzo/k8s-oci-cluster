@@ -35,6 +35,8 @@ data "cloudinit_config" "k8s_server_tpl" {
       ingress_controller_https_nodeport = var.ingress_controller_https_nodeport
       extlb_listener_http_port          = var.extlb_listener_http_port,
       extlb_listener_https_port         = var.extlb_listener_https_port,
+      expose_kubeapi                    = var.expose_kubeapi
+      k8s_tls_san_public                = local.public_lb_ip[0],
     })
   }
 }

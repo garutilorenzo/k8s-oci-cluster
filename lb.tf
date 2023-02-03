@@ -100,38 +100,38 @@ resource "oci_network_load_balancer_backend" "k8s_https_backend_extra_node" {
 
 ## kube-api
 
-# resource "oci_network_load_balancer_listener" "k8s_kubeapi_listener" {
-#   count                    = var.expose_kubeapi ? 1 : 0
-#   default_backend_set_name = oci_network_load_balancer_backend_set.k8s_kubeapi_backend_set[count.index].name
-#   name                     = "k8s_kubeapi_listener"
-#   network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
-#   port                     = var.kube_api_port
-#   protocol                 = "TCP"
-# }
+resource "oci_network_load_balancer_listener" "k8s_kubeapi_listener" {
+  count                    = var.expose_kubeapi ? 1 : 0
+  default_backend_set_name = oci_network_load_balancer_backend_set.k8s_kubeapi_backend_set[count.index].name
+  name                     = "k8s_kubeapi_listener"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  port                     = var.kube_api_port
+  protocol                 = "TCP"
+}
 
-# resource "oci_network_load_balancer_backend_set" "k8s_kubeapi_backend_set" {
-#   count = var.expose_kubeapi ? 1 : 0
+resource "oci_network_load_balancer_backend_set" "k8s_kubeapi_backend_set" {
+  count = var.expose_kubeapi ? 1 : 0
 
-#   health_checker {
-#     protocol = "TCP"
-#     port     = var.kube_api_port
-#   }
+  health_checker {
+    protocol = "TCP"
+    port     = var.kube_api_port
+  }
 
-#   name                     = "k8s_kubeapi_backend"
-#   network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
-#   policy                   = "FIVE_TUPLE"
-#   is_preserve_source       = true
-# }
+  name                     = "k8s_kubeapi_backend"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  policy                   = "FIVE_TUPLE"
+  is_preserve_source       = true
+}
 
-# resource "oci_network_load_balancer_backend" "k8s_kubeapi_backend" {
-#   depends_on = [
-#     oci_core_instance_pool.k8s_servers,
-#   ]
+resource "oci_network_load_balancer_backend" "k8s_kubeapi_backend" {
+  depends_on = [
+    oci_core_instance_pool.k8s_servers,
+  ]
 
-#   count                    = var.expose_kubeapi ? var.k8s_server_pool_size : 0
-#   backend_set_name         = oci_network_load_balancer_backend_set.k8s_kubeapi_backend_set[0].name
-#   network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
-#   name                     = format("%s:%s", data.oci_core_instance_pool_instances.k8s_servers_instances.instances[count.index].id, var.kube_api_port)
-#   port                     = var.kube_api_port
-#   target_id                = data.oci_core_instance_pool_instances.k8s_servers_instances.instances[count.index].id
-# }
+  count                    = var.expose_kubeapi ? var.k8s_server_pool_size : 0
+  backend_set_name         = oci_network_load_balancer_backend_set.k8s_kubeapi_backend_set[0].name
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  name                     = format("%s:%s", data.oci_core_instance_pool_instances.k8s_servers_instances.instances[count.index].id, var.kube_api_port)
+  port                     = var.kube_api_port
+  target_id                = data.oci_core_instance_pool_instances.k8s_servers_instances.instances[count.index].id
+}
