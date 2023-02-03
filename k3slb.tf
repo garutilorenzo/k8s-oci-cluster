@@ -22,7 +22,7 @@ resource "oci_load_balancer_load_balancer" "k8s_load_balancer" {
 resource "oci_load_balancer_listener" "k8s_kube_api_listener" {
   default_backend_set_name = oci_load_balancer_backend_set.k8s_kube_api_backend_set.name
   load_balancer_id         = oci_load_balancer_load_balancer.k8s_load_balancer.id
-  name                     = "k8s__kube_api_listener"
+  name                     = "k8s_kube_api_listener"
   port                     = var.kube_api_port
   protocol                 = "TCP"
 }
