@@ -65,3 +65,19 @@ resource "oci_vault_secret" "hash_secret" {
 
   freeform_tags = local.tags
 }
+
+resource "oci_vault_secret" "kubeconfig_secret_name" {
+  compartment_id = var.compartment_ocid
+  key_id         = oci_kms_key.k8s_kms_key.id
+  secret_content {
+    content_type = "BASE64"
+
+    content = base64encode("empty kubeconfig secret")
+    # name    = "${var.hash_secret_name}-${var.environment}"
+  }
+  secret_name = "${var.kubeconfig_secret_name}-${var.environment}"
+  description = "Kubeconfig hash"
+  vault_id    = oci_kms_vault.k8s_kms_valult.id
+
+  freeform_tags = local.tags
+}

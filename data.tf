@@ -25,6 +25,7 @@ data "cloudinit_config" "k8s_server_tpl" {
       hash_secret_name                  = var.hash_secret_name,
       token_secret_name                 = var.token_secret_name,
       cert_secret_name                  = var.cert_secret_name,
+      kubeconfig_secret_name            = var.kubeconfig_secret_name,
       kube_api_port                     = var.kube_api_port,
       control_plane_ip                  = oci_load_balancer_load_balancer.k8s_load_balancer.ip_address_details[0].ip_address,
       install_longhorn                  = var.install_longhorn,

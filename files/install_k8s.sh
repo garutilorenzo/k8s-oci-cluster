@@ -19,7 +19,7 @@ bootstrapTokens:
 kind: InitConfiguration
 localAPIEndpoint:
   advertiseAddress: $ADVERTISE_ADDR
-  bindPort: ${kube_api_port }
+  bindPort: ${kube_api_port}
 nodeRegistration:
   criSocket: /run/containerd/containerd.sock
   imagePullPolicy: IfNotPresent
@@ -241,19 +241,27 @@ k8s_join(){
   kubeadm join --ignore-preflight-errors=NumCPU --config /root/kubeadm-join-master.yaml
   mkdir ~/.kube
   cp /etc/kubernetes/admin.conf ~/.kube/config
+
+  %{ if expose_kubeapi }
+  KUBECONFIG=$(cat ~/.kube/config | sed 's/server: https:\/\/${control_plane_ip}:${kube_api_port}/server: https:\/\/${k8s_tls_san_public}:${kube_api_port}/')
+  %{ else }
+  KUBECONFIG=$(cat ~/.kube/config)
+  %{ endif }
+  
+  KUBECONFIG_BASE64=$(echo $KUBECONFIG | base64 -w0)
+  kubeconfig_ocid=$(oci vault secret list --compartment-id ${compartment_ocid}  | jq -r '.data[] | select(."secret-name" == "${kubeconfig_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
+  oci vault secret update-base64 --secret-id $kubeconfig_ocid  --secret-content-content $KUBECONFIG_BASE64
+  
 }
 
 generate_vault_secrets(){
   HASH=$(openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //')
   HASH_BASE64=$(echo $HASH | base64 -w0)
-  echo $HASH > /tmp/ca.txt
 
   TOKEN=$(kubeadm token create)
-  echo $TOKEN > /tmp/kubeadm_token.txt
   TOKEN_BASE64=$(echo $TOKEN | base64 -w0)
 
   CERT=$(kubeadm init phase upload-certs --upload-certs | tail -n 1)
-  echo $CERT > /tmp/kubeadm_cert.txt
   CERT_BASE64=$(echo $CERT | base64 -w0)
 
   hash_ocid=$(oci vault secret list --compartment-id ${compartment_ocid}  | jq -r '.data[] | select(."secret-name" == "${hash_secret_name}-${environment}" and ."lifecycle-state" == "ACTIVE") | .id')
