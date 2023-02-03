@@ -25,7 +25,7 @@ resource "oci_vault_secret" "cert_secret" {
     content_type = "BASE64"
 
     content = base64encode("empty cert secret")
-    name    = "${var.cert_secret_name}-${var.environment}"
+    # name    = "${var.cert_secret_name}-${var.environment}"
   }
   secret_name = "${var.cert_secret_name}-${var.environment}"
   description = "Kubernetes certificate"
@@ -41,7 +41,7 @@ resource "oci_vault_secret" "token_secret" {
     content_type = "BASE64"
 
     content = base64encode("empty token secret")
-    name    = "${var.token_secret_name}-${var.environment}"
+    # name    = "${var.token_secret_name}-${var.environment}"
   }
   secret_name = "${var.token_secret_name}-${var.environment}"
   description = "Kubernetes token"
@@ -57,7 +57,7 @@ resource "oci_vault_secret" "hash_secret" {
     content_type = "BASE64"
 
     content = base64encode("empty hash secret")
-    name    = "${var.hash_secret_name}-${var.environment}"
+    # name    = "${var.hash_secret_name}-${var.environment}"
   }
   secret_name = "${var.hash_secret_name}-${var.environment}"
   description = "Kubernetes hash"
