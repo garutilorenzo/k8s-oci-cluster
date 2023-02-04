@@ -30,12 +30,6 @@ variable "public_key_path" {
   description = "Path to your public key"
 }
 
-variable "PATH_TO_PRIVATE_KEY" {
-  type        = string
-  default     = "~/.ssh/id_rsa"
-  description = "Path to your private key"
-}
-
 variable "os_image_id" {
   type = string
   # default = "ocid1.image.oc1.eu-zurich-1.aaaaaaaag2uyozo7266bmg26j5ixvi42jhaujso2pddpsigtib6vfnqy5f6q" # Canonical-Ubuntu-20.04-aarch64-2022.01.18-0
@@ -164,6 +158,21 @@ variable "install_nginx_ingress" {
 variable "nginx_ingress_release" {
   type    = string
   default = "v1.5.1"
+}
+
+variable "install_certmanager" {
+  type    = bool
+  default = true
+}
+
+variable "certmanager_release" {
+  type    = string
+  default = "v1.11.0"
+}
+
+variable "certmanager_email_address" {
+  type    = string
+  default = "changeme@example.com"
 }
 
 variable "ingress_controller_http_nodeport" {

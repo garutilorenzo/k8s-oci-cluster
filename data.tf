@@ -32,6 +32,9 @@ data "cloudinit_config" "k8s_server_tpl" {
       longhorn_release                  = var.longhorn_release,
       install_nginx_ingress             = var.install_nginx_ingress,
       nginx_ingress_release             = var.nginx_ingress_release,
+      install_certmanager               = var.install_certmanager,
+      certmanager_release               = var.certmanager_release,
+      certmanager_email_address         = var.certmanager_email_address,
       ingress_controller_http_nodeport  = var.ingress_controller_http_nodeport
       ingress_controller_https_nodeport = var.ingress_controller_https_nodeport
       expose_kubeapi                    = var.expose_kubeapi
