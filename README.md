@@ -141,7 +141,6 @@ variable "region" {
 
 module "k8s_cluster" {
   public_key_path     = "<change_me>"
-  PATH_TO_PRIVATE_KEY    = "<change_me>"
   region                 = var.region
   availability_domain    = "<change_me>"
   compartment_ocid       = var.compartment_ocid
@@ -275,8 +274,6 @@ Once you have created the terraform.tfvars file edit the `main.tf` file (always 
 | `cert_secret_name`  | `no`  | Secret name where kubernetes cert is stored  |
 | `kubeconfig_secret_name  | `no`  | Secret name where kubernetes kubeconfig is stored  |
 | `public_key_path`     | `no`       | Path to your public ssh key (Default: "~/.ssh/id_rsa.pub) |
-| `PATH_TO_PRIVATE_KEY` | `no`        | Path to your private ssh key (Default: "~/.ssh/id_rsa) |
-
 
 #### How to find the availability doamin name
 
@@ -452,28 +449,63 @@ terraform plan
 
 ...
 ...
+      # module.k8s_cluster.oci_vault_secret.kubeconfig_secret_name will be created
+      + resource "oci_vault_secret" "kubeconfig_secret_name" {
+      + compartment_id                 = "ocid1.tenancy.oc1..aaaaaaaacuobj3enmdjf3j7heb3vwr2iqtcb266xlkczo3ifxubiuep6fvpq"
+      + current_version_number         = (known after apply)
+      + defined_tags                   = (known after apply)
+      + description                    = "Kubeconfig hash"
+      + freeform_tags                  = {
+          + "application"      = "k8s"
+          + "environment"      = "staging"
+          + "k3s_cluster_name" = "kubernetes"
+          + "provisioner"      = "terraform"
+          + "terraform_module" = "https://github.com/garutilorenzo/k8s-oci-cluster"
+        }
       + id                             = (known after apply)
-      + ip_addresses                   = (known after apply)
-      + is_preserve_source_destination = false
-      + is_private                     = true
+      + key_id                         = "ocid1.key.oc1.eu-zurich-1.c5r5vcceaaanu.ab5heljr74iutguojeaogcb5or5kqb3q6uxs2njuua5fkr6nlhlh67uukrbq"
       + lifecycle_details              = (known after apply)
-      + nlb_ip_version                 = (known after apply)
+      + metadata                       = (known after apply)
+      + secret_name                    = "k8s-hash-staging"
       + state                          = (known after apply)
-      + subnet_id                      = (known after apply)
-      + system_tags                    = (known after apply)
       + time_created                   = (known after apply)
-      + time_updated                   = (known after apply)
+      + time_of_current_version_expiry = (known after apply)
+      + time_of_deletion               = (known after apply)
+      + vault_id                       = "ocid1.vault.oc1.eu-zurich-1.c5r5vcceaaanu.ab5heljr6pnyytb2bn7fdfacyo2eses7mcgbnv7wqhvwcckjjfvekn2tmefq"
 
-      + reserved_ips {
-          + id = (known after apply)
+      + secret_content {
+          + content      = "ZW1wdHkga3ViZWNvbmZpZyBzZWNyZXQ="
+          + content_type = "BASE64"
+          + name         = (known after apply)
+          + stage        = (known after apply)
+        }
+
+      + secret_rules {
+          + is_enforced_on_deleted_secret_versions        = (known after apply)
+          + is_secret_content_retrieval_blocked_on_expiry = (known after apply)
+          + rule_type                                     = (known after apply)
+          + secret_version_expiry_interval                = (known after apply)
+          + time_of_absolute_expiry                       = (known after apply)
         }
     }
 
-Plan: 27 to add, 0 to change, 0 to destroy.
+  # module.k8s_cluster.oci_vault_secret.token_secret will be updated in-place
+  ~ resource "oci_vault_secret" "token_secret" {
+        id                     = "ocid1.vaultsecret.oc1.eu-zurich-1.amaaaaaa5kjm7pyaob2ryqa5q4awwgkugs2it37pjmnlj7ldd6kr2ssqubpa"
+        # (11 unchanged attributes hidden)
+
+      + secret_content {
+          + content      = "ZW1wdHkgdG9rZW4gc2VjcmV0"
+          + content_type = "BASE64"
+        }
+
+        # (1 unchanged block hidden)
+    }
+
+Plan: 41 to add, 3 to change, 0 to destroy.
 
 Changes to Outputs:
   + k8s_servers_ips = [
-      + (known after apply),
       + (known after apply),
     ]
   + k8s_workers_ips = [
@@ -481,8 +513,6 @@ Changes to Outputs:
       + (known after apply),
     ]
   + public_lb_ip    = (known after apply)
-
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you run "terraform apply" now.
 ```
@@ -495,11 +525,10 @@ terraform apply
 ...
 ...
 
-Plan: 31 to add, 0 to change, 0 to destroy.
+Plan: 41 to add, 3 to change, 0 to destroy.
 
 Changes to Outputs:
   + k8s_servers_ips = [
-      + (known after apply),
       + (known after apply),
     ]
   + k8s_workers_ips = [
