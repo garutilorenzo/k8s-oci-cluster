@@ -151,16 +151,6 @@ variable "kube_api_port" {
   description = "Kubeapi Port"
 }
 
-variable "extlb_listener_http_port" {
-  type    = number
-  default = 30080
-}
-
-variable "extlb_listener_https_port" {
-  type    = number
-  default = 30443
-}
-
 variable "my_public_ip_cidr" {
   type        = string
   description = "My public ip CIDR"
