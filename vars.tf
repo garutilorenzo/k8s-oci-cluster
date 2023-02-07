@@ -14,6 +14,10 @@ variable "environment" {
   type = string
 }
 
+variable "os_image_id" {
+  type = string
+}
+
 variable "cluster_name" {
   type    = string
   default = "kubernetes"
@@ -28,13 +32,6 @@ variable "public_key_path" {
   type        = string
   default     = "~/.ssh/id_rsa.pub"
   description = "Path to your public key"
-}
-
-variable "os_image_id" {
-  type = string
-  # default = "ocid1.image.oc1.eu-zurich-1.aaaaaaaag2uyozo7266bmg26j5ixvi42jhaujso2pddpsigtib6vfnqy5f6q" # Canonical-Ubuntu-20.04-aarch64-2022.01.18-0
-  default = "ocid1.image.oc1.eu-zurich-1.aaaaaaaadtfctegquwzdim6vaz32xvaxy74ptji4gwwohnylrz57moilieua" # Canonical-Ubuntu-22.04-aarch64-2022.11.06-0
-  # default = "ocid1.image.oc1.eu-zurich-1.aaaaaaaaz4kb57ds3nepbbz7phv4pjgqs3737g5xmusfu5un5srybcybptaa" # Oracle-Linux-8.6-aarch64-2022.12.15-0
 }
 
 variable "compute_shape" {
