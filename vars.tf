@@ -212,7 +212,7 @@ variable "cert_secret_name" {
 
 variable "kubeconfig_secret_name" {
   type    = string
-  default = "k8s-hash"
+  default = "k8s-kubeconfig"
 }
 
 variable "k8s_extra_worker_node" {
