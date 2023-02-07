@@ -16,18 +16,27 @@ This project is based on the [OCI K3s cluster](https://github.com/garutilorenzo/
 
 # Table of Contents
 
-* [Important notes](#important-notes)
-* [Requirements](#requirements)
-* [Example RSA key generation](#example-rsa-key-generation)
-* [Project setup](#project-setup)
-* [Oracle provider setup](#oracle-provider-setup)
-* [Pre flight checklist](#pre-flight-checklist)
-* [Notes about OCI always free resources](#notes-about-oci-always-free-resources)
-* [Infrastructure overview](#infrastructure-overview)
-* [Kubernetes setup](#kubernetes-setup)
-* [Deploy](#deploy)
-* [Deploy a sample stack](#deploy-a-sample-stack)
-* [Clean up](#clean-up)
+- [Kubernetes on OCI](#deploy-kubernetes-on-amazon-aws)
+- [Table of Contents](#table-of-contents)
+    - [Important notes](#important-notes)
+    - [Requirements](#requirements)
+    - [Supported OS](#supported-os)
+    - [Terraform OCI user creation (Optional)](#terraform-oci-user-creation-optional)
+      - [Example RSA key generation](#example-rsa-key-generation)
+    - [Project setup](#project-setup)
+    - [Oracle provider setup](#oracle-provider-setup)
+    - [Pre flight checklist](#pre-flight-checklist)
+      - [How to find the availability doamin name](#how-to-find-the-availability-doamin-name)
+      - [How to list all the OS images](#how-to-list-all-the-os-images)
+  - [Notes about OCI always free resources](#notes-about-oci-always-free-resources)
+  - [Infrastructure overview](#infrastructure-overview)
+  - [Kubernetes setup](#kubernetes-setup)
+  - [Cluster resource deployed](#cluster-resource-deployed)
+    - [Nginx ingress controller](#nginx-ingress-controller)
+    - [Cert-manager](#cert-manager)
+  - [Deploy](#deploy)
+  - [Deploy a sample stack](#deploy-a-sample-stack)
+  - [Clean up](#clean-up)
 
 **Note** choose a region with enough ARM capacity
 
@@ -45,6 +54,37 @@ To use this repo you will need:
 
 Once you get the account, follow the *Before you begin* and *1. Prepare* step in [this](https://docs.oracle.com/en-us/iaas/developer-tutorials/tutorials/tf-provider/01-summary.htm) document.
 
+### Supported OS
+
+This module was tested with:
+
+* Ubuntu 22.04 (ubuntu remote user)
+* Ubuntu 22.04 Minimal (ubuntu remote user)
+* Oracle Linux 8 (opc remote user)
+
+### Terraform OCI user creation (Optional)
+
+Is always recommended to create a separate user and group in your preferred [domain](https://cloud.oracle.com/identity/domains) to use with Terraform.
+This user must have less privileges possible (Zero trust policy). Below is an example policy that you can [create](https://cloud.oracle.com/identity/policies) allow `terraform-group` to manage all the resources needed by this module:
+
+```
+Allow group terraform-group to manage virtual-network-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage instance-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage compute-management-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage volume-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage load-balancers in compartment id <compartment_ocid>
+Allow group terraform-group to manage network-load-balancers in compartment id <compartment_ocid>
+Allow group terraform-group to manage dynamic-groups in compartment id <compartment_ocid>
+Allow group terraform-group to manage policies in compartment id <compartment_ocid>
+Allow group terraform-group to manage secret-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage key-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage secrets in compartment id <compartment_ocid>
+Allow group terraform-group to manage vaults in compartment id <compartment_ocid>
+```
+
+See [how](#oracle-provider-setup) to find the compartment ocid. The user and the group have to be manually created before using this module.
+To create the user go to **Identity & Security -> Users**, then create the group in **Identity & Security -> Groups** and associate the newly created user to the group. The last step is to create the policy in **Identity & Security -> Policies**.
+
 #### Example RSA key generation
 
 To use terraform with the Oracle Cloud infrastructure you need to generate an RSA key. Generate the rsa key with:
@@ -55,29 +95,28 @@ chmod 600 ~/.oci/<your_name>-oracle-cloud.pem
 openssl rsa -pubout -in ~/.oci/<your_name>-oracle-cloud.pem -out ~/.oci/<your_name>-oracle-cloud_public.pem
 ```
 
-replace *<your_name>* with your name or a string you prefer.
+replace `<your_name>` with your name or a string you prefer.
 
-**NOTE** ~/.oci/<your_name>-oracle-cloud_public.pem this string will be used on the *terraform.tfvars* used by the Oracle provider plugin, so please take note of this string.
+**NOTE**: `~/.oci/<your_name>-oracle-cloud_public.pem` will be used in  `terraform.tfvars` by the Oracle provider plugin, so please take note of this string.
 
 ### Project setup
 
-Clone this repo and go in the *example/* directory:
+Clone this repo and go in the `example/` directory:
 
 ```
 git clone https://github.com/garutilorenzo/k8s-oci-cluster.git
 cd k8s-oci-cluster/example/
 ```
 
-Now you have to edit the *main.tf* file and you have to create the *terraform.tfvars* file. For more detail see [Oracle provider setup](#oracle-provider-setup) and [Pre flight checklist](#pre-flight-checklist).
+Now you have to edit the `main.tf` file and you have to create the `terraform.tfvars` file. For more detail see [Oracle provider setup](#oracle-provider-setup) and [Pre flight checklist](#pre-flight-checklist).
 
 Or if you prefer you can create an new empty directory in your workspace and create this three files:
 
-* terraform.tfvars - More details in [Oracle provider setup](#oracle-provider-setup)
-* main.tf
-* provider.tf
+* `terraform.tfvars` - More details in [Oracle provider setup](#oracle-provider-setup)
+* `main.tf`
+* `provider.tf`
 
-The main.tf file will look like:
-
+The `main.tf` file will look like:
 
 ```
 variable "compartment_ocid" {
@@ -105,16 +144,12 @@ variable "region" {
 }
 
 module "k8s_cluster" {
-  PATH_TO_PUBLIC_KEY     = "<change_me>"
-  PATH_TO_PRIVATE_KEY    = "<change_me>"
-  PATH_TO_PUBLIC_LB_CERT = "<change_me>"
-  PATH_TO_PUBLIC_LB_KEY  = "<change_me>"
+  public_key_path     = "<change_me>"
   region                 = var.region
   availability_domain    = "<change_me>"
   compartment_ocid       = var.compartment_ocid
   my_public_ip_cidr      = "<change_me>"
   environment            = "staging"
-  uuid                   = "<change_me>"
   install_longhorn       = true
   install_nginx_ingress  = true
   source                 = "github.com/garutilorenzo/k8s-oci-cluster"
@@ -135,7 +170,7 @@ output "public_lb_ip" {
 
 For all the possible variables see [Pre flight checklist](#pre-flight-checklist)
 
-The provider.tf will look like:
+The `provider.tf` will look like:
 
 ```
 provider "oci" {
@@ -176,72 +211,9 @@ rerun this command to reinitialize your working directory. If you forget, other
 commands will detect it and remind you to do so if necessary.
 ```
 
-#### Generate sel signed SSL certificate for the public LB (L7)
-
-**NOTE** If you already own a valid certificate skip this step and set the correct values for the variables: PATH_TO_PUBLIC_LB_CERT and PATH_TO_PUBLIC_LB_KEY
-
-We need to generate the certificates (sel signed) for our public load balancer (Layer 7). To do this we need *openssl*, open a terminal and follow this step:
-
-Generate the key:
-
-```
-openssl genrsa 2048 > privatekey.pem
-Generating RSA private key, 2048 bit long modulus (2 primes)
-.......+++++
-...............+++++
-e is 65537 (0x010001)
-```
-
-Generate the a new certificate request:
-
-```
-openssl req -new -key privatekey.pem -out csr.pem
-You are about to be asked to enter information that will be incorporated
-into your certificate request.
-What you are about to enter is what is called a Distinguished Name or a DN.
-There are quite a few fields but you can leave some blank
-For some fields there will be a default value,
-If you enter '.', the field will be left blank.
------
-Country Name (2 letter code) [AU]:IT
-State or Province Name (full name) [Some-State]:Italy
-Locality Name (eg, city) []:Brescia
-Organization Name (eg, company) [Internet Widgits Pty Ltd]:GL Ltd
-Organizational Unit Name (eg, section) []:IT
-Common Name (e.g. server FQDN or YOUR name) []:testlb.domainexample.com
-Email Address []:email@you.com
-
-Please enter the following 'extra' attributes
-to be sent with your certificate request
-A challenge password []:
-An optional company name []:
-```
-
-Generate the public CRT:
-
-```
-openssl x509 -req -days 365 -in csr.pem -signkey privatekey.pem -out public.crt
-Signature ok
-subject=C = IT, ST = Italy, L = Brescia, O = GL Ltd, OU = IT, CN = testlb.domainexample.com, emailAddress = email@you.com
-Getting Private key
-```
-
-This is the final result:
-
-```
-ls
-
-csr.pem  privatekey.pem  public.crt
-```
-
-Now set the variables:
-
-* PATH_TO_PUBLIC_LB_CERT: ~/full_path/public.crt
-* PATH_TO_PUBLIC_LB_KEY: ~/full_path/privatekey.pem
-
 ### Oracle provider setup
 
-In the *example/* directory of this repo you need to create a terraform.tfvars file, the file will look like:
+In the `example/` directory of this repo you need to create a `terraform.tfvars` file, the file will look like:
 
 ```
 fingerprint      = "<rsa_key_fingerprint>"
@@ -251,17 +223,17 @@ tenancy_ocid     = "<tenency_ocid>"
 compartment_ocid = "<compartment_ocid>"
 ```
 
-To find your tenency_ocid in the Ocacle Cloud console go to: Governance and Administration > Tenency details, then copy the OCID.
+To find your `tenency_ocid` in the Ocacle Cloud console go to: **Governance and Administration > Tenency details**, then copy the OCID.
 
-To find you user_ocid in the Ocacle Cloud console go to User setting (click on the icon in the top right corner, then click on User settings), click your username and then copy the OCID
+To find you `user_ocid` in the Ocacle Cloud console go to **User setting** (click on the icon in the top right corner, then click on User settings), click your username and then copy the OCID.
 
-The compartment_ocid is the same as tenency_ocid.
+The `compartment_ocid` is the same as `tenency_ocid`.
 
-The fingerprint is the fingerprint of your RSA key, you can find this vale under User setting > API Keys
+The fingerprint is the fingerprint of your RSA key, you can find this vale under **User setting > API Keys**.
 
 ### Pre flight checklist
 
-Once you have created the terraform.tfvars file edit the main.tf file (always in the *example/* directory) and set the following variables:
+Once you have created the terraform.tfvars file edit the `main.tf` file (always in the `example/` directory) and set the following variables:
 
 | Var   | Required | Desc |
 | ------- | ------- | ----------- |
@@ -270,10 +242,8 @@ Once you have created the terraform.tfvars file edit the main.tf file (always in
 | `compartment_ocid` | `yes`        | Set the correct compartment ocid. See [how](#oracle-provider-setup) to find the compartment ocid |
 | `my_public_ip_cidr` | `yes`        |  your public ip in cidr format (Example: 195.102.xxx.xxx/32) |
 | `environment`  | `yes`  | Current work environment (Example: staging/dev/prod). This value is used for tag all the deployed resources |
-| `PATH_TO_PUBLIC_LB_CERT`  | `yes`  | Path to the public LB certificate. See [how to](#generate-sel-signed-ssl-certificate-for-the-public-lb-l7) generate the certificate |
-| `PATH_TO_PUBLIC_LB_KEY`  | `yes`  | Path to the public LB key. See [how to](#generate-sel-signed-ssl-certificate-for-the-public-lb-l7) generate the key |
+| `os_image_id`  | `yes`  | Image id to use. See [how](#how-to-list-all-the-os-images) to list all available OS images |
 | `compute_shape`  | `no`  | Compute shape to use. Default VM.Standard.A1.Flex. **NOTE** Is mandatory to use this compute shape for provision 4 always free VMs |
-| `os_image_id`  | `no`  | Image id to use. Default image: Canonical-Ubuntu-20.04-aarch64-2022.01.18-0. See [how](#how-to-list-all-the-os-images) to list all available OS images |
 | `oci_core_vcn_dns_label`  | `no`  | VCN DNS label. Default: defaultvcn |
 | `oci_core_subnet_dns_label10`  | `no`  | First subnet DNS label. Default: defaultsubnet10 |
 | `oci_core_subnet_dns_label11`  | `no`  | Second subnet DNS label. Default: defaultsubnet11 |
@@ -284,6 +254,7 @@ Once you have created the terraform.tfvars file edit the main.tf file (always in
 | `oci_identity_policy_name`  | `no`  | Policy name. This policy will allow dynamic group 'oci_identity_dynamic_group_name' to read OCI api without auth. Default: Compute_To_Oci_Api_Policy |
 | `k8s_load_balancer_name`  | `no`  | Internal LB name. Default: k8s internal load balancer  |
 | `public_load_balancer_name`  | `no`  | Public LB name. Default: k8s public LB  |
+| `cluster_name`  | `no`  | Kubernetes cluster name. Default: kubernetes  |
 | `k8s_version`  | `no`  | Kubernetes version to install  |
 | `k8s_pod_subnet`  | `no`  | Kubernetes pod subnet managed by the CNI (Flannel). Default: 10.244.0.0/16 |
 | `k8s_service_subnet`  | `no`  | Kubernetes pod service managed by the CNI (Flannel). Default: 10.96.0.0/12 |
@@ -292,19 +263,24 @@ Once you have created the terraform.tfvars file edit the main.tf file (always in
 | `public_lb_shape`  | `no`  | LB shape for the public LB. Default: flexible. **NOTE** is mandatory to use this kind of shape to provision two always free LB (public and private)  |
 | `http_lb_port`  | `no`  | http port used by the public LB. Default: 80  |
 | `https_lb_port`  | `no`  | http port used by the public LB. Default: 443  |
-| `extlb_listener_http_port`  | `no`  | HTTP nodeport where nginx ingress controller will listen. Default: 30080 |
-| `extlb_listener_https_port`  | `no`  | HTTPS nodeport where nginx ingress controller will listen. Default 30443 |
-| `k8s_server_pool_size`  | `no`  | Number of k8s servers deployed. Default 2  |
+| `ingress_controller_http_nodeport`  | `no`  | HTTP nodeport where nginx ingress controller will listen. Default: 30080 |
+| `ingress_controller_https_nodeport`  | `no`  | HTTPS nodeport where nginx ingress controller will listen. Default 30443 |
+| `k8s_server_pool_size`  | `no`  | Number of k8s servers deployed. Default 1  |
 | `k8s_worker_pool_size`  | `no`  | Number of k8s workers deployed. Default 2  |
-| `oci_bucket_name`  | `no`  | Bucket name used for sharing the kubernetes token used for joining the cluster. Default: my-very-secure-k8s-bucket  |
+| `k8s_extra_worker_node`  | `no`  | Boolean value, default true. Deploy the third worker nodes. The node will be deployed outside the worker instance pools. Using OCI always free account you can't create instance pools with more than two servers. This workaround solve this problem.  |
 | `install_nginx_ingress`  | `no`  | Boolean value, install kubernetes nginx ingress controller. Default: false. |
+| `nginx_ingress_release`  | `no`  | Nginx ingress release to install. Default: v1.5.1|
 | `install_longhorn`  | `no`  | Boolean value, install longhorn "Cloud native distributed block storage for Kubernetes". Default: false  |
-| `longhorn_release`  | `no`  | Longhorn release. Default: v1.2.3  |
-| `unique_tag_key`  | `no`  | Unique tag name used for tagging all the deployed resources. Default: k8s-provisioner |
-| `unique_tag_value`  | `no`  | Unique value used with  unique_tag_key. Default: https://github.com/garutilorenzo/k8s-oci-cluster |
-| `PATH_TO_PUBLIC_KEY`     | `no`       | Path to your public ssh key (Default: "~/.ssh/id_rsa.pub) |
-| `PATH_TO_PRIVATE_KEY` | `no`        | Path to your private ssh key (Default: "~/.ssh/id_rsa) |
-
+| `longhorn_release`  | `no`  | Longhorn release. Default: v1.4.0  |
+| `install_certmanager`  | `no`  | Boolean value, install [cert manager](https://cert-manager.io/) "Cloud native certificate management". Default: true  |
+| `certmanager_release`  | `no`  | Cert manager release. Default: v1.11.0  |
+| `certmanager_email_address`  | `no`  | Email address used for signing https certificates. Defaul: changeme@example.com  |
+| `expose_kubeapi`  | `no`  | Boolean value, default false. Expose or not the kubeapi server to the internet. Access is granted only from my_public_ip_cidr for security reasons.  |
+| `hash_secret_name`  | `no`  | Secret name where kubernetes hash is stored  |
+| `token_secret_name`  | `no`  | Secret name where kubernetes token is stored  |
+| `cert_secret_name`  | `no`  | Secret name where kubernetes cert is stored  |
+| `kubeconfig_secret_name  | `no`  | Secret name where kubernetes kubeconfig is stored  |
+| `public_key_path`     | `no`       | Path to your public ssh key (Default: "~/.ssh/id_rsa.pub) |
 
 #### How to find the availability doamin name
 
@@ -325,7 +301,7 @@ oci iam availability-domain list
 
 #### How to list all the OS images
 
-To filter the OS images by shape and OS run this command on che Cloud Shell:
+To filter the OS images by shape and OS run this command on che Cloud Shell. You can filter by OS: Canonical Ubuntu or Oracle Linux:
 
 ```
 oci compute image list --compartment-id <compartment_ocid> --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex"
@@ -359,21 +335,23 @@ oci compute image list --compartment-id <compartment_ocid> --operating-system "C
     },
 ```
 
-**Note:** this setup was only tested with Ubuntu 20.04
+**Note:** this setup was tested with Ubuntu 22.04 and Oracle Linux 8
 
 ## Notes about OCI always free resources
 
-In order to get the maximum resources available within the oracle always free tier, the max amount of the k8s servers and k8s workers must be 2. So the max value for *k8s_server_pool_size* and *k8s_worker_pool_size* **is** 2.
+In order to get the maximum resources available within the oracle always free tier and to get the k8s cluster in HA `k8s_server_pool_size` is set to 1 (single master node) and `k8s_worker_pool_size` is set to 2.
+With the latest release was introduced the new variable `k8s_extra_worker_node`. With this variable set to `true` (Default) a third worker node will be added.
+In previous releases the master nodws where two, but this didn't guarantee the HA of the cluster.
 
-In this setup we use two LB, one internal LB and one public LB (Layer 7). In order to use two LB using the always free resources, one lb must be a [network load balancer](https://docs.oracle.com/en-us/iaas/Content/NetworkLoadBalancer/introducton.htm#Overview) an the other must be a [load balancer](https://docs.oracle.com/en-us/iaas/Content/Balance/Concepts/balanceoverview.htm). The public LB **must** use the *flexible* shape (*public_lb_shape* variable).
+In this setup we use two LB, one internal LB (Layer 7) and one public LB (Layer 4). In order to use two LB using the always free resources, one lb must be a [network load balancer](https://docs.oracle.com/en-us/iaas/Content/NetworkLoadBalancer/introducton.htm#Overview) an the other must be a [load balancer](https://docs.oracle.com/en-us/iaas/Content/Balance/Concepts/balanceoverview.htm). The public LB **must** use the `flexible` shape (`public_lb_shape` variable).
 
 ## Infrastructure overview
 
 The final infrastructure will be made by:
 
 * two instance pool:
-  * one instance pool for the server nodes named "k8s-servers"
-  * one instance pool for the worker nodes named "k8s-workers"
+  * one instance pool for the server nodes named `k8s-servers`
+  * one instance pool for the worker nodes named `k8s-workers`
 * one internal load balancer that will route traffic to k8s servers
 * one external load balancer that will route traffic to k8s workers
 
@@ -392,9 +370,82 @@ The installation of K8s id done by [kubeadm](https://kubernetes.io/docs/setup/pr
 
 You can optionally install [Nginx ingress controller](https://kubernetes.github.io/ingress-nginx/) and [Longhorn](#https://longhorn.io/).
 
-To install Nginx ingress set the variable *install_nginx_ingress* to yes (default no). To install longhorn set the variable *install_longhorn* to yes (default no). **NOTE** if you don't install the nginx ingress, the public Load Balancer and the SSL certificate won't be deployed.
+This modules uses OCI vault secrets to store join certificates.
 
-In this installation is used a OCI bucket to store the join certificate/token. At the first startup of the instance, if the cluster does not exist, the OCI bucket is used to get the join certificates/token.
+## Cluster resource deployed
+
+You can optionally install [longhorn](https://longhorn.io/). Longhorn is a *Cloud native distributed block storage for Kubernetes*. To enable the longhorn deployment set `install_longhorn` variable to `true`.
+
+**NOTE** to use longhorn set the `k8s_version` < `v1.25.x` [Ref.](https://github.com/longhorn/longhorn/issues/4003)
+
+### Nginx ingress controller
+
+You can optionally install [Nginx ingress controller](https://kubernetes.github.io/ingress-nginx/) To enable the longhorn deployment set `install_nginx_ingress` variable to `true`.
+
+The installation is the [bare metal](https://kubernetes.github.io/ingress-nginx/deploy/#bare-metal-clusters) installation, the ingress controller then is exposed via a NodePort Service.
+
+```yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-controller-loadbalancer
+  namespace: ingress-nginx
+spec:
+  selector:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+      nodePort: ${ingress_controller_http_nodeport}
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 443
+      nodePort: ${ingress_controller_https_nodeport}
+  type: NodePort
+```
+
+To get the real ip address of the clients using a public L4 load balancer we need to use the proxy protocol feature of nginx ingress controller:
+
+```yaml
+---
+apiVersion: v1
+data:
+  allow-snippet-annotations: "true"
+  enable-real-ip: "true"
+  proxy-real-ip-cidr: "0.0.0.0/0"
+  proxy-body-size: "20m"
+  use-proxy-protocol: "true"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+    app.kubernetes.io/version: ${nginx_ingress_release}
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+```
+
+**NOTE** to use nginx ingress controller with the proxy protocol enabled, an external nginx instance is used as proxy (since OCI LB doesn't support proxy protocol at the moment). Nginx will be installed on each worker node and the configuation of nginx will:
+
+* listen in proxy protocol mode
+* forward the traffic from port `80` to `extlb_listener_http_port` (default to `30080`) on any server of the cluster
+* forward the traffic from port `443` to `extlb_listener_https_port` (default to `30443`) on any server of the cluster
+
+This is the final result:
+
+Client -> Public L4 LB -> nginx proxy (with proxy protocol enabled) -> nginx ingress (with proxy protocol enabled) -> k3s service -> pod(s)
+
+### Cert-manager
+
+[cert-manager](https://cert-manager.io/docs/) is used to issue certificates from a variety of supported source. To use cert-manager take a look at [nginx-ingress-cert-manager.yml](https://github.com/garutilorenzo/k3s-oci-cluster/blob/master/deployments/nginx/nginx-ingress-cert-manager.yml) and [nginx-configmap-cert-manager.yml](https://github.com/garutilorenzo/k3s-oci-cluster/blob/master/deployments/nginx/nginx-configmap-cert-manager.yml) example. To use cert-manager and get the certificate you **need** set on your DNS configuration the public ip address of the load balancer.
 
 ## Deploy
 
@@ -405,28 +456,63 @@ terraform plan
 
 ...
 ...
+      # module.k8s_cluster.oci_vault_secret.kubeconfig_secret_name will be created
+      + resource "oci_vault_secret" "kubeconfig_secret_name" {
+      + compartment_id                 = "ocid1.tenancy.oc1..aaaaaaaacuobj3enmdjf3j7heb3vwr2iqtcb266xlkczo3ifxubiuep6fvpq"
+      + current_version_number         = (known after apply)
+      + defined_tags                   = (known after apply)
+      + description                    = "Kubeconfig hash"
+      + freeform_tags                  = {
+          + "application"      = "k8s"
+          + "environment"      = "staging"
+          + "k3s_cluster_name" = "kubernetes"
+          + "provisioner"      = "terraform"
+          + "terraform_module" = "https://github.com/garutilorenzo/k8s-oci-cluster"
+        }
       + id                             = (known after apply)
-      + ip_addresses                   = (known after apply)
-      + is_preserve_source_destination = false
-      + is_private                     = true
+      + key_id                         = "ocid1.key.oc1.eu-zurich-1.c5r5vcceaaanu.ab5heljr74iutguojeaogcb5or5kqb3q6uxs2njuua5fkr6nlhlh67uukrbq"
       + lifecycle_details              = (known after apply)
-      + nlb_ip_version                 = (known after apply)
+      + metadata                       = (known after apply)
+      + secret_name                    = "k8s-hash-staging"
       + state                          = (known after apply)
-      + subnet_id                      = (known after apply)
-      + system_tags                    = (known after apply)
       + time_created                   = (known after apply)
-      + time_updated                   = (known after apply)
+      + time_of_current_version_expiry = (known after apply)
+      + time_of_deletion               = (known after apply)
+      + vault_id                       = "ocid1.vault.oc1.eu-zurich-1.c5r5vcceaaanu.ab5heljr6pnyytb2bn7fdfacyo2eses7mcgbnv7wqhvwcckjjfvekn2tmefq"
 
-      + reserved_ips {
-          + id = (known after apply)
+      + secret_content {
+          + content      = "ZW1wdHkga3ViZWNvbmZpZyBzZWNyZXQ="
+          + content_type = "BASE64"
+          + name         = (known after apply)
+          + stage        = (known after apply)
+        }
+
+      + secret_rules {
+          + is_enforced_on_deleted_secret_versions        = (known after apply)
+          + is_secret_content_retrieval_blocked_on_expiry = (known after apply)
+          + rule_type                                     = (known after apply)
+          + secret_version_expiry_interval                = (known after apply)
+          + time_of_absolute_expiry                       = (known after apply)
         }
     }
 
-Plan: 27 to add, 0 to change, 0 to destroy.
+  # module.k8s_cluster.oci_vault_secret.token_secret will be updated in-place
+  ~ resource "oci_vault_secret" "token_secret" {
+        id                     = "ocid1.vaultsecret.oc1.eu-zurich-1.amaaaaaa5kjm7pyaob2ryqa5q4awwgkugs2it37pjmnlj7ldd6kr2ssqubpa"
+        # (11 unchanged attributes hidden)
+
+      + secret_content {
+          + content      = "ZW1wdHkgdG9rZW4gc2VjcmV0"
+          + content_type = "BASE64"
+        }
+
+        # (1 unchanged block hidden)
+    }
+
+Plan: 41 to add, 3 to change, 0 to destroy.
 
 Changes to Outputs:
   + k8s_servers_ips = [
-      + (known after apply),
       + (known after apply),
     ]
   + k8s_workers_ips = [
@@ -434,8 +520,6 @@ Changes to Outputs:
       + (known after apply),
     ]
   + public_lb_ip    = (known after apply)
-
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you run "terraform apply" now.
 ```
@@ -447,41 +531,11 @@ terraform apply
 
 ...
 ...
-  + resource "oci_objectstorage_bucket" "cert_bucket" {
-      + access_type                  = "NoPublicAccess"
-      + approximate_count            = (known after apply)
-      + approximate_size             = (known after apply)
-      + auto_tiering                 = (known after apply)
-      + bucket_id                    = (known after apply)
-      + compartment_id               = "ocid1.tenancy.oc1..xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      + created_by                   = (known after apply)
-      + defined_tags                 = (known after apply)
-      + etag                         = (known after apply)
-      + freeform_tags                = {
-          + "environment"     = "staging"
-          + "k8s-provisioner" = "https://github.com/garutilorenzo/k8s-oci-cluster"
-          + "provisioner"     = "terraform"
-          + "scope"           = "k8s-cluster"
-          + "uuid"            = "xxxx-xxxx-xxxx-xxxxxx"
-        }
-      + id                           = (known after apply)
-      + is_read_only                 = (known after apply)
-      + kms_key_id                   = (known after apply)
-      + name                         = "my-very-secure-k8s-bucket"
-      + namespace                    = "xxxxxxxxx"
-      + object_events_enabled        = (known after apply)
-      + object_lifecycle_policy_etag = (known after apply)
-      + replication_enabled          = (known after apply)
-      + storage_tier                 = (known after apply)
-      + time_created                 = (known after apply)
-      + versioning                   = (known after apply)
-    }
 
-Plan: 31 to add, 0 to change, 0 to destroy.
+Plan: 41 to add, 3 to change, 0 to destroy.
 
 Changes to Outputs:
   + k8s_servers_ips = [
-      + (known after apply),
       + (known after apply),
     ]
   + k8s_workers_ips = [
@@ -499,29 +553,42 @@ Do you want to perform these actions?
 ...
 ...
 
-module.k8s_cluster.oci_load_balancer_backend.k8s_http_backend[0]: Still creating... [40s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_https_backend[0]: Still creating... [40s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_http_backend[0]: Still creating... [50s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_https_backend[0]: Still creating... [50s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_http_backend[0]: Still creating... [1m0s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_https_backend[0]: Still creating... [1m0s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_http_backend[0]: Creation complete after 1m0s [id=loadBalancers/ocid1.loadbalancer.oc1.eu-zurich-1.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/backendSets/k8s_http_backend_set/backends/10.0.0.153:30080]
-module.k8s_cluster.oci_load_balancer_backend.k8s_https_backend[0]: Creation complete after 1m10s [id=loadBalancers/ocid1.loadbalancer.oc1.eu-zurich-1.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/backendSets/k8s_https_backend_set/backends/10.0.0.153:30443]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [1m40s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_https_backend_extra_node[0]: Still creating... [1m40s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [1m50s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_https_backend_extra_node[0]: Still creating... [1m50s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_https_backend_extra_node[0]: Still creating... [2m0s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [2m0s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_https_backend_extra_node[0]: Creation complete after 2m8s [id=networkLoadBalancers/ocid1.networkloadbalancer.oc1.eu-zurich-1.xxxxxx/backendSets/k8s_https_backend/backends/ocid1.instance.oc1.eu-zurich-1.xxxxxx:443]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [2m10s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [2m20s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [2m30s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Creation complete after 2m34s [id=networkLoadBalancers/ocid1.networkloadbalancer.oc1.eu-zurich-1.xxxxxx/backendSets/k8s_http_backend/backends/ocid1.instance.oc1.eu-zurich-1.xxxxxx:80]
 
-Apply complete! Resources: 31 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 41 added, 3 changed, 0 destroyed.
 
 Outputs:
 
 k8s_servers_ips = [
-  "152.x.x.x",
   "140.x.x.x",
 ]
 k8s_workers_ips = [
-  "152.x.x.x",
   "140.x.x.x",
+  "152.x.x.x",
 ]
 public_lb_ip = tolist([
-  "144.x.x.x",
+  {
+    "ip_address" = "152.x.x.x"
+    "ip_version" = "IPV4"
+    "is_public" = true
+    "reserved_ip" = tolist([])
+  },
+  {
+    "ip_address" = "10.x.x.x"
+    "ip_version" = "IPV4"
+    "is_public" = false
+    "reserved_ip" = tolist([])
+  },
 ])
 ```
 
@@ -555,7 +622,7 @@ curl -v http://PUBLIC_LB_IP
 > 
 * Mark bundle as not supporting multiuse
 < HTTP/1.1 404 Not Found
-< Date: Wed, 20 Apr 2022 09:07:41 GMT
+< Date: Sat, 04 Feb 2023 11:06:30 GMT
 < Content-Type: text/html
 < Content-Length: 146
 < Connection: keep-alive
@@ -584,33 +651,38 @@ curl -k -v https://PUBLIC_LB_IP
   CApath: /etc/ssl/certs
 * TLSv1.3 (OUT), TLS handshake, Client hello (1):
 * TLSv1.3 (IN), TLS handshake, Server hello (2):
-* TLSv1.2 (IN), TLS handshake, Certificate (11):
-* TLSv1.2 (IN), TLS handshake, Server key exchange (12):
-* TLSv1.2 (IN), TLS handshake, Server finished (14):
-* TLSv1.2 (OUT), TLS handshake, Client key exchange (16):
-* TLSv1.2 (OUT), TLS change cipher, Change cipher spec (1):
-* TLSv1.2 (OUT), TLS handshake, Finished (20):
-* TLSv1.2 (IN), TLS handshake, Finished (20):
-* SSL connection using TLSv1.2 / ECDHE-RSA-AES128-GCM-SHA256
-* ALPN, server accepted to use http/1.1
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+* TLSv1.3 (IN), TLS handshake, CERT verify (15):
+* TLSv1.3 (IN), TLS handshake, Finished (20):
+* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
+* TLSv1.3 (OUT), TLS handshake, Finished (20):
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+* ALPN, server accepted to use h2
 * Server certificate:
-*  subject: C=IT; ST=Italy; L=Brescia; O=GL Ltd; OU=IT; CN=testlb.domainexample.com; emailAddress=email@you.com
-*  start date: Apr 11 08:20:12 2022 GMT
-*  expire date: Apr 11 08:20:12 2023 GMT
-*  issuer: C=IT; ST=Italy; L=Brescia; O=GL Ltd; OU=IT; CN=testlb.domainexample.com; emailAddress=email@you.com
-*  SSL certificate verify result: self signed certificate (18), continuing anyway.
-> GET / HTTP/1.1
+*  subject: O=Acme Co; CN=Kubernetes Ingress Controller Fake Certificate
+*  start date: Feb  3 09:26:14 2023 GMT
+*  expire date: Feb  3 09:26:14 2024 GMT
+*  issuer: O=Acme Co; CN=Kubernetes Ingress Controller Fake Certificate
+*  SSL certificate verify result: unable to get local issuer certificate (20), continuing anyway.
+* Using HTTP2, server supports multi-use
+* Connection state changed (HTTP/2 confirmed)
+* Copying HTTP/2 data in stream buffer to connection buffer after upgrade: len=0
+* Using Stream ID: 1 (easy handle 0x5566c6bfa2f0)
+> GET / HTTP/2
 > Host: PUBLIC_LB_IP
-> User-Agent: curl/7.68.0
-> Accept: */*
+> user-agent: curl/7.68.0
+> accept: */*
 > 
-* Mark bundle as not supporting multiuse
-< HTTP/1.1 404 Not Found
-< Date: Wed, 20 Apr 2022 09:13:17 GMT
-< Content-Type: text/html
-< Content-Length: 146
-< Connection: keep-alive
-< Strict-Transport-Security: max-age=15724800; includeSubDomains
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+* old SSL session ID is stale, removing
+* Connection state changed (MAX_CONCURRENT_STREAMS == 128)!
+< HTTP/2 404 
+< date: Sat, 04 Feb 2023 11:07:06 GMT
+< content-type: text/html
+< content-length: 146
+< strict-transport-security: max-age=15724800; includeSubDomains
 < 
 <html>
 <head><title>404 Not Found</title></head>

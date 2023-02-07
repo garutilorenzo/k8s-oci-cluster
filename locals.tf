@@ -1,10 +1,10 @@
 locals {
-  k8s_int_lb_dns_name = format("%s.%s.%s.oraclevcn.com", replace(var.k8s_load_balancer_name, " ", "-"), var.oci_core_subnet_dns_label11, var.oci_core_vcn_dns_label)
+  public_lb_ip = [for interface in oci_network_load_balancer_network_load_balancer.k8s_public_lb.ip_addresses : interface.ip_address if interface.is_public == true]
   tags = {
-    "environment"           = "${var.environment}"
-    "provisioner"           = "terraform"
-    "scope"                 = "k8s-cluster"
-    "uuid"                  = "${var.uuid}"
-    "${var.unique_tag_key}" = "${var.unique_tag_value}"
+    environment      = "${var.environment}"
+    provisioner      = "terraform"
+    terraform_module = "https://github.com/garutilorenzo/k8s-oci-cluster"
+    k3s_cluster_name = "${var.cluster_name}"
+    application      = "k8s"
   }
 }

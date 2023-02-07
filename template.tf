@@ -41,13 +41,14 @@ resource "oci_core_instance_configuration" "k8s_server_template" {
       create_vnic_details {
         assign_public_ip = true
         subnet_id        = oci_core_subnet.default_oci_core_subnet10.id
+        nsg_ids          = [oci_core_network_security_group.lb_to_instances_kubeapi.id]
       }
 
       display_name = "Ubuntu k8s server template"
 
       metadata = {
-        "ssh_authorized_keys" = file(var.PATH_TO_PUBLIC_KEY)
-        "user_data"           = data.template_cloudinit_config.k8s_server_tpl.rendered
+        "ssh_authorized_keys" = file(var.public_key_path)
+        "user_data"           = data.cloudinit_config.k8s_server_tpl.rendered
       }
 
       shape = var.compute_shape
@@ -106,13 +107,14 @@ resource "oci_core_instance_configuration" "k8s_worker_template" {
       create_vnic_details {
         assign_public_ip = true
         subnet_id        = oci_core_subnet.default_oci_core_subnet10.id
+        nsg_ids          = [oci_core_network_security_group.lb_to_instances_http.id]
       }
 
       display_name = "Ubuntu k8s worker template"
 
       metadata = {
-        "ssh_authorized_keys" = file(var.PATH_TO_PUBLIC_KEY)
-        "user_data"           = data.template_cloudinit_config.k8s_worker_tpl.rendered
+        "ssh_authorized_keys" = file(var.public_key_path)
+        "user_data"           = data.cloudinit_config.k8s_worker_tpl.rendered
       }
 
       shape = var.compute_shape

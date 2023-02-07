@@ -1,118 +1,137 @@
-resource "oci_load_balancer_load_balancer" "k8s_public_lb" {
-  count                      = var.install_nginx_ingress ? 1 : 0
+resource "oci_network_load_balancer_network_load_balancer" "k8s_public_lb" {
   compartment_id             = var.compartment_ocid
   display_name               = var.public_load_balancer_name
-  shape                      = var.public_lb_shape
-  subnet_ids                 = [oci_core_subnet.oci_core_subnet11.id]
+  subnet_id                  = oci_core_subnet.oci_core_subnet11.id
   network_security_group_ids = [oci_core_network_security_group.public_lb_nsg.id]
 
+  is_private                     = false
+  is_preserve_source_destination = false
+
   freeform_tags = local.tags
-
-  ip_mode    = "IPV4"
-  is_private = false
-
-  shape_details {
-    maximum_bandwidth_in_mbps = 10
-    minimum_bandwidth_in_mbps = 10
-  }
 }
 
-# HTTP 
-resource "oci_load_balancer_listener" "k8s_http_listener" {
-  count                    = var.install_nginx_ingress ? 1 : 0
-  default_backend_set_name = oci_load_balancer_backend_set.k8s_http_backend_set[count.index].name
-  load_balancer_id         = oci_load_balancer_load_balancer.k8s_public_lb[count.index].id
+# HTTP
+resource "oci_network_load_balancer_listener" "k8s_http_listener" {
+  default_backend_set_name = oci_network_load_balancer_backend_set.k8s_http_backend_set.name
   name                     = "k8s_http_listener"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
   port                     = var.http_lb_port
-  protocol                 = "HTTP"
+  protocol                 = "TCP"
 }
 
-resource "oci_load_balancer_backend_set" "k8s_http_backend_set" {
-  count = var.install_nginx_ingress ? 1 : 0
+resource "oci_network_load_balancer_backend_set" "k8s_http_backend_set" {
   health_checker {
-    protocol    = "HTTP"
-    port        = var.extlb_listener_http_port
-    url_path    = "/healthz"
-    return_code = 200
+    protocol = "TCP"
+    port     = var.http_lb_port
   }
 
-  load_balancer_id = oci_load_balancer_load_balancer.k8s_public_lb[count.index].id
-  name             = "k8s_http_backend_set"
-  policy           = "ROUND_ROBIN"
+  name                     = "k8s_http_backend"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  policy                   = "FIVE_TUPLE"
+  is_preserve_source       = true
 }
 
-resource "oci_load_balancer_backend" "k8s_http_backend" {
+resource "oci_network_load_balancer_backend" "k8s_http_backend" {
   depends_on = [
     oci_core_instance_pool.k8s_workers,
   ]
 
-  count            = var.install_nginx_ingress ? var.k8s_worker_pool_size : 0
-  backendset_name  = oci_load_balancer_backend_set.k8s_http_backend_set[0].name
-  ip_address       = data.oci_core_instance.k8s_workers_instances_ips[count.index].private_ip
-  load_balancer_id = oci_load_balancer_load_balancer.k8s_public_lb[0].id
-  port             = var.extlb_listener_http_port
+  count                    = var.k8s_worker_pool_size
+  backend_set_name         = oci_network_load_balancer_backend_set.k8s_http_backend_set.name
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  name                     = format("%s:%s", data.oci_core_instance_pool_instances.k8s_workers_instances.instances[count.index].id, var.http_lb_port)
+  port                     = var.http_lb_port
+  target_id                = data.oci_core_instance_pool_instances.k8s_workers_instances.instances[count.index].id
+}
+
+resource "oci_network_load_balancer_backend" "k8s_http_backend_extra_node" {
+  count = var.k8s_extra_worker_node ? 1 : 0
+
+  backend_set_name         = oci_network_load_balancer_backend_set.k8s_http_backend_set.name
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  name                     = format("%s:%s", oci_core_instance.k8s_extra_worker_node[count.index].id, var.http_lb_port)
+  port                     = var.http_lb_port
+  target_id                = oci_core_instance.k8s_extra_worker_node[count.index].id
 }
 
 # HTTPS
-resource "oci_load_balancer_certificate" "k8s_https_certificate" {
-  count            = var.install_nginx_ingress ? 1 : 0
-  certificate_name = "k8s_lb_https_cert"
-  load_balancer_id = oci_load_balancer_load_balancer.k8s_public_lb[count.index].id
-
-  private_key        = file(var.PATH_TO_PUBLIC_LB_KEY)
-  public_certificate = file(var.PATH_TO_PUBLIC_LB_CERT)
-  ca_certificate     = file(var.PATH_TO_PUBLIC_LB_CERT)
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "oci_load_balancer_listener" "k8s_https_listener" {
-  count                    = var.install_nginx_ingress ? 1 : 0
-  default_backend_set_name = oci_load_balancer_backend_set.k8s_https_backend_set[count.index].name
-  load_balancer_id         = oci_load_balancer_load_balancer.k8s_public_lb[count.index].id
+resource "oci_network_load_balancer_listener" "k8s_https_listener" {
+  default_backend_set_name = oci_network_load_balancer_backend_set.k8s_https_backend_set.name
   name                     = "k8s_https_listener"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
   port                     = var.https_lb_port
-  protocol                 = "HTTP"
-
-  ssl_configuration {
-    certificate_name        = oci_load_balancer_certificate.k8s_https_certificate[count.index].certificate_name
-    cipher_suite_name       = "oci-default-ssl-cipher-suite-v1"
-    verify_peer_certificate = false
-    verify_depth            = 1
-  }
+  protocol                 = "TCP"
 }
 
-resource "oci_load_balancer_backend_set" "k8s_https_backend_set" {
-  count = var.install_nginx_ingress ? 1 : 0
+resource "oci_network_load_balancer_backend_set" "k8s_https_backend_set" {
   health_checker {
-    protocol    = "HTTP"
-    port        = var.extlb_listener_https_port
-    url_path    = "/healthz"
-    return_code = 200
+    protocol = "TCP"
+    port     = var.https_lb_port
   }
 
-  ssl_configuration {
-    certificate_name        = oci_load_balancer_certificate.k8s_https_certificate[count.index].certificate_name
-    cipher_suite_name       = "oci-default-ssl-cipher-suite-v1"
-    verify_peer_certificate = false
-    verify_depth            = 1
-  }
-
-  load_balancer_id = oci_load_balancer_load_balancer.k8s_public_lb[count.index].id
-  name             = "k8s_https_backend_set"
-  policy           = "ROUND_ROBIN"
+  name                     = "k8s_https_backend"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  policy                   = "FIVE_TUPLE"
+  is_preserve_source       = true
 }
 
-resource "oci_load_balancer_backend" "k8s_https_backend" {
+resource "oci_network_load_balancer_backend" "k8s_https_backend" {
   depends_on = [
     oci_core_instance_pool.k8s_workers,
   ]
 
-  count            = var.install_nginx_ingress ? var.k8s_worker_pool_size : 0
-  backendset_name  = oci_load_balancer_backend_set.k8s_https_backend_set[0].name
-  ip_address       = data.oci_core_instance.k8s_workers_instances_ips[count.index].private_ip
-  load_balancer_id = oci_load_balancer_load_balancer.k8s_public_lb[0].id
-  port             = var.extlb_listener_https_port
+  count                    = var.k8s_worker_pool_size
+  backend_set_name         = oci_network_load_balancer_backend_set.k8s_https_backend_set.name
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  name                     = format("%s:%s", data.oci_core_instance_pool_instances.k8s_workers_instances.instances[count.index].id, var.https_lb_port)
+  port                     = var.https_lb_port
+  target_id                = data.oci_core_instance_pool_instances.k8s_workers_instances.instances[count.index].id
+}
+
+resource "oci_network_load_balancer_backend" "k8s_https_backend_extra_node" {
+  count = var.k8s_extra_worker_node ? 1 : 0
+
+  backend_set_name         = oci_network_load_balancer_backend_set.k8s_https_backend_set.name
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  name                     = format("%s:%s", oci_core_instance.k8s_extra_worker_node[count.index].id, var.https_lb_port)
+  port                     = var.https_lb_port
+  target_id                = oci_core_instance.k8s_extra_worker_node[count.index].id
+}
+
+## kube-api
+
+resource "oci_network_load_balancer_listener" "k8s_kubeapi_listener" {
+  count                    = var.expose_kubeapi ? 1 : 0
+  default_backend_set_name = oci_network_load_balancer_backend_set.k8s_kubeapi_backend_set[count.index].name
+  name                     = "k8s_kubeapi_listener"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  port                     = var.kube_api_port
+  protocol                 = "TCP"
+}
+
+resource "oci_network_load_balancer_backend_set" "k8s_kubeapi_backend_set" {
+  count = var.expose_kubeapi ? 1 : 0
+
+  health_checker {
+    protocol = "TCP"
+    port     = var.kube_api_port
+  }
+
+  name                     = "k8s_kubeapi_backend"
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  policy                   = "FIVE_TUPLE"
+  is_preserve_source       = true
+}
+
+resource "oci_network_load_balancer_backend" "k8s_kubeapi_backend" {
+  depends_on = [
+    oci_core_instance_pool.k8s_servers,
+  ]
+
+  count                    = var.expose_kubeapi ? var.k8s_server_pool_size : 0
+  backend_set_name         = oci_network_load_balancer_backend_set.k8s_kubeapi_backend_set[0].name
+  network_load_balancer_id = oci_network_load_balancer_network_load_balancer.k8s_public_lb.id
+  name                     = format("%s:%s", data.oci_core_instance_pool_instances.k8s_servers_instances.instances[count.index].id, var.kube_api_port)
+  port                     = var.kube_api_port
+  target_id                = data.oci_core_instance_pool_instances.k8s_servers_instances.instances[count.index].id
 }

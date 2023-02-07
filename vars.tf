@@ -14,8 +14,13 @@ variable "environment" {
   type = string
 }
 
-variable "uuid" {
+variable "os_image_id" {
   type = string
+}
+
+variable "cluster_name" {
+  type    = string
+  default = "kubernetes"
 }
 
 variable "fault_domains" {
@@ -23,21 +28,10 @@ variable "fault_domains" {
   default = ["FAULT-DOMAIN-1", "FAULT-DOMAIN-2", "FAULT-DOMAIN-3"]
 }
 
-variable "PATH_TO_PUBLIC_KEY" {
+variable "public_key_path" {
   type        = string
   default     = "~/.ssh/id_rsa.pub"
   description = "Path to your public key"
-}
-
-variable "PATH_TO_PRIVATE_KEY" {
-  type        = string
-  default     = "~/.ssh/id_rsa"
-  description = "Path to your private key"
-}
-
-variable "os_image_id" {
-  type    = string
-  default = "ocid1.image.oc1.eu-zurich-1.aaaaaaaag2uyozo7266bmg26j5ixvi42jhaujso2pddpsigtib6vfnqy5f6q" # Canonical-Ubuntu-20.04-aarch64-2022.01.18-0
 }
 
 variable "compute_shape" {
@@ -112,19 +106,9 @@ variable "https_lb_port" {
   default = 443
 }
 
-variable "PATH_TO_PUBLIC_LB_CERT" {
-  type        = string
-  description = "Path to the public LB https certificate"
-}
-
-variable "PATH_TO_PUBLIC_LB_KEY" {
-  type        = string
-  description = "Path to the public LB key"
-}
-
 variable "k8s_server_pool_size" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "k8s_worker_pool_size" {
@@ -134,7 +118,7 @@ variable "k8s_worker_pool_size" {
 
 variable "k8s_version" {
   type    = string
-  default = "1.23.5"
+  default = "1.25.6"
 }
 
 variable "k8s_pod_subnet" {
@@ -158,26 +142,6 @@ variable "kube_api_port" {
   description = "Kubeapi Port"
 }
 
-variable "unique_tag_key" {
-  type    = string
-  default = "k8s-provisioner"
-}
-
-variable "unique_tag_value" {
-  type    = string
-  default = "https://github.com/garutilorenzo/k8s-oci-cluster"
-}
-
-variable "extlb_listener_http_port" {
-  type    = number
-  default = 30080
-}
-
-variable "extlb_listener_https_port" {
-  type    = number
-  default = 30443
-}
-
 variable "my_public_ip_cidr" {
   type        = string
   description = "My public ip CIDR"
@@ -188,6 +152,36 @@ variable "install_nginx_ingress" {
   default = false
 }
 
+variable "nginx_ingress_release" {
+  type    = string
+  default = "v1.5.1"
+}
+
+variable "install_certmanager" {
+  type    = bool
+  default = true
+}
+
+variable "certmanager_release" {
+  type    = string
+  default = "v1.11.0"
+}
+
+variable "certmanager_email_address" {
+  type    = string
+  default = "changeme@example.com"
+}
+
+variable "ingress_controller_http_nodeport" {
+  type    = number
+  default = 30080
+}
+
+variable "ingress_controller_https_nodeport" {
+  type    = number
+  default = 30443
+}
+
 variable "install_longhorn" {
   type    = bool
   default = false
@@ -195,10 +189,35 @@ variable "install_longhorn" {
 
 variable "longhorn_release" {
   type    = string
-  default = "v1.2.3"
+  default = "v1.4.0"
 }
 
-variable "oci_bucket_name" {
+variable "hash_secret_name" {
   type    = string
-  default = "my-very-secure-k8s-bucket"
+  default = "k8s-hash"
+}
+
+variable "token_secret_name" {
+  type    = string
+  default = "k8s-token"
+}
+
+variable "cert_secret_name" {
+  type    = string
+  default = "k8s-cert"
+}
+
+variable "kubeconfig_secret_name" {
+  type    = string
+  default = "k8s-kubeconfig"
+}
+
+variable "k8s_extra_worker_node" {
+  type    = bool
+  default = true
+}
+
+variable "expose_kubeapi" {
+  type    = bool
+  default = false
 }

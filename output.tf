@@ -13,5 +13,5 @@ output "k8s_workers_ips" {
 }
 
 output "public_lb_ip" {
-  value = oci_load_balancer_load_balancer.k8s_public_lb[0].ip_addresses
+  value = oci_network_load_balancer_network_load_balancer.k8s_public_lb.ip_addresses
 }
