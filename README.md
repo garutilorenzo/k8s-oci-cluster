@@ -269,6 +269,9 @@ Once you have created the terraform.tfvars file edit the `main.tf` file (always 
 | `nginx_ingress_release`  | `no`  | Nginx ingress release to install. Default: v1.5.1|
 | `install_longhorn`  | `no`  | Boolean value, install longhorn "Cloud native distributed block storage for Kubernetes". Default: false  |
 | `longhorn_release`  | `no`  | Longhorn release. Default: v1.4.0  |
+| `install_certmanager`  | `no`  | Boolean value, install [cert manager](https://cert-manager.io/) "Cloud native certificate management". Default: true  |
+| `certmanager_release`  | `no`  | Cert manager release. Default: v1.11.0  |
+| `certmanager_email_address`  | `no`  | Email address used for signing https certificates. Defaul: changeme@example.com  |
 | `expose_kubeapi`  | `no`  | Boolean value, default false. Expose or not the kubeapi server to the internet. Access is granted only from my_public_ip_cidr for security reasons.  |
 | `hash_secret_name`  | `no`  | Secret name where kubernetes hash is stored  |
 | `token_secret_name`  | `no`  | Secret name where kubernetes token is stored  |
@@ -439,7 +442,7 @@ Client -> Public L4 LB -> nginx proxy (with proxy protocol enabled) -> nginx ing
 
 ### Cert-manager
 
-[cert-manager](https://cert-manager.io/docs/) is used to issue certificates from a variety of supported source. To use cert-manager take a look at [nginx-ingress-cert-manager.yml](deployments/nginx/nginx-ingress-cert-manager.yml) and [nginx-configmap-cert-manager.yml](deployments/nginx/nginx-configmap-cert-manager.yml) example. To use cert-manager and get the certificate you **need** set on your DNS configuration the public ip address of the load balancer.
+[cert-manager](https://cert-manager.io/docs/) is used to issue certificates from a variety of supported source. To use cert-manager take a look at [nginx-ingress-cert-manager.yml](https://github.com/garutilorenzo/k3s-oci-cluster/blob/master/deployments/nginx/nginx-ingress-cert-manager.yml) and [nginx-configmap-cert-manager.yml](https://github.com/garutilorenzo/k3s-oci-cluster/blob/master/deployments/nginx/nginx-configmap-cert-manager.yml) example. To use cert-manager and get the certificate you **need** set on your DNS configuration the public ip address of the load balancer.
 
 ## Deploy
 
