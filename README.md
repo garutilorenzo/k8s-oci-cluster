@@ -51,7 +51,6 @@ To use this repo you will need:
 
 Once you get the account, follow the *Before you begin* and *1. Prepare* step in [this](https://docs.oracle.com/en-us/iaas/developer-tutorials/tutorials/tf-provider/01-summary.htm) document.
 
-
 ### Supported OS
 
 This module was tested with:
@@ -66,16 +65,18 @@ Is always recommended to create a separate user and group in your preferred [dom
 This user must have less privileges possible (Zero trust policy). Below is an example policy that you can [create](https://cloud.oracle.com/identity/policies) allow `terraform-group` to manage all the resources needed by this module:
 
 ```
-Allow group terraform-group to manage virtual-network-family  in compartment id <compartment_ocid>
-Allow group terraform-group to manage instance-family  in compartment id <compartment_ocid>
-Allow group terraform-group to manage compute-management-family  in compartment id <compartment_ocid>
-Allow group terraform-group to manage volume-family  in compartment id <compartment_ocid>
-Allow group terraform-group to manage load-balancers  in compartment id <compartment_ocid>
-Allow group terraform-group to manage network-load-balancers  in compartment id <compartment_ocid>
+Allow group terraform-group to manage virtual-network-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage instance-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage compute-management-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage volume-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage load-balancers in compartment id <compartment_ocid>
+Allow group terraform-group to manage network-load-balancers in compartment id <compartment_ocid>
 Allow group terraform-group to manage dynamic-groups in compartment id <compartment_ocid>
 Allow group terraform-group to manage policies in compartment id <compartment_ocid>
-Allow group terraform-group to read network-load-balancers  in compartment id <compartment_ocid>
-Allow group terraform-group to manage dynamic-groups in tenancy
+Allow group terraform-group to manage secret-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage key-family in compartment id <compartment_ocid>
+Allow group terraform-group to manage secrets in compartment id <compartment_ocid>
+Allow group terraform-group to manage vaults in compartment id <compartment_ocid>
 ```
 
 See [how](#oracle-provider-setup) to find the compartment ocid. The user and the group have to be manually created before using this module.
@@ -546,29 +547,42 @@ Do you want to perform these actions?
 ...
 ...
 
-module.k8s_cluster.oci_load_balancer_backend.k8s_http_backend[0]: Still creating... [40s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_https_backend[0]: Still creating... [40s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_http_backend[0]: Still creating... [50s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_https_backend[0]: Still creating... [50s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_http_backend[0]: Still creating... [1m0s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_https_backend[0]: Still creating... [1m0s elapsed]
-module.k8s_cluster.oci_load_balancer_backend.k8s_http_backend[0]: Creation complete after 1m0s [id=loadBalancers/ocid1.loadbalancer.oc1.eu-zurich-1.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/backendSets/k8s_http_backend_set/backends/10.0.0.153:30080]
-module.k8s_cluster.oci_load_balancer_backend.k8s_https_backend[0]: Creation complete after 1m10s [id=loadBalancers/ocid1.loadbalancer.oc1.eu-zurich-1.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/backendSets/k8s_https_backend_set/backends/10.0.0.153:30443]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [1m40s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_https_backend_extra_node[0]: Still creating... [1m40s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [1m50s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_https_backend_extra_node[0]: Still creating... [1m50s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_https_backend_extra_node[0]: Still creating... [2m0s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [2m0s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_https_backend_extra_node[0]: Creation complete after 2m8s [id=networkLoadBalancers/ocid1.networkloadbalancer.oc1.eu-zurich-1.xxxxxx/backendSets/k8s_https_backend/backends/ocid1.instance.oc1.eu-zurich-1.xxxxxx:443]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [2m10s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [2m20s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Still creating... [2m30s elapsed]
+module.k8s_cluster.oci_network_load_balancer_backend.k8s_http_backend_extra_node[0]: Creation complete after 2m34s [id=networkLoadBalancers/ocid1.networkloadbalancer.oc1.eu-zurich-1.xxxxxx/backendSets/k8s_http_backend/backends/ocid1.instance.oc1.eu-zurich-1.xxxxxx:80]
 
-Apply complete! Resources: 31 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 41 added, 3 changed, 0 destroyed.
 
 Outputs:
 
 k8s_servers_ips = [
-  "152.x.x.x",
   "140.x.x.x",
 ]
 k8s_workers_ips = [
-  "152.x.x.x",
   "140.x.x.x",
+  "152.x.x.x",
 ]
 public_lb_ip = tolist([
-  "144.x.x.x",
+  {
+    "ip_address" = "152.x.x.x"
+    "ip_version" = "IPV4"
+    "is_public" = true
+    "reserved_ip" = tolist([])
+  },
+  {
+    "ip_address" = "10.x.x.x"
+    "ip_version" = "IPV4"
+    "is_public" = false
+    "reserved_ip" = tolist([])
+  },
 ])
 ```
 
