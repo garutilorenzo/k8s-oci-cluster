@@ -14,7 +14,7 @@ resource "oci_identity_policy" "compute_dynamic_group_policy" {
   statements = [
     "allow dynamic-group ${oci_identity_dynamic_group.compute_dynamic_group.name} to read instance-family in compartment id ${var.compartment_ocid}",
     "allow dynamic-group ${oci_identity_dynamic_group.compute_dynamic_group.name} to read compute-management-family in compartment id ${var.compartment_ocid}",
-    "allow dynamic-group ${oci_identity_dynamic_group.compute_dynamic_group.name} to use secret-family in compartment id ${var.compartment_ocid}",
+    "allow dynamic-group ${oci_identity_dynamic_group.compute_dynamic_group.name} to manage secret-family in compartment id ${var.compartment_ocid}",
     "allow dynamic-group ${oci_identity_dynamic_group.compute_dynamic_group.name} to use key-family in compartment id ${var.compartment_ocid}"
   ]
 
