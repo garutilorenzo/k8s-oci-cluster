@@ -118,7 +118,7 @@ variable "k8s_worker_pool_size" {
 
 variable "k8s_version" {
   type    = string
-  default = "1.25.6"
+  default = "1.27.3"
 }
 
 variable "k8s_pod_subnet" {
@@ -154,7 +154,7 @@ variable "install_nginx_ingress" {
 
 variable "nginx_ingress_release" {
   type    = string
-  default = "v1.5.1"
+  default = "v1.8.1"
 }
 
 variable "install_certmanager" {
@@ -164,7 +164,7 @@ variable "install_certmanager" {
 
 variable "certmanager_release" {
   type    = string
-  default = "v1.11.0"
+  default = "v1.12.2"
 }
 
 variable "certmanager_email_address" {
@@ -189,7 +189,7 @@ variable "install_longhorn" {
 
 variable "longhorn_release" {
   type    = string
-  default = "v1.4.0"
+  default = "v1.4.3"
 }
 
 variable "hash_secret_name" {
