@@ -68,7 +68,7 @@ localAPIEndpoint:
   advertiseAddress: $ADVERTISE_ADDR
   bindPort: ${kube_api_port}
 nodeRegistration:
-  criSocket: /run/containerd/containerd.sock
+  criSocket: unix:///run/containerd/containerd.sock
   imagePullPolicy: IfNotPresent
   name: $HOSTNAME
   taints: null
